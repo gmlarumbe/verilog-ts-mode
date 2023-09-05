@@ -1,8 +1,8 @@
 [![MELPA](https://melpa.org/packages/verilog-ts-mode-badge.svg)](https://melpa.org/#/verilog-ts-mode)
-<!-- [![MELPA Stable](https://stable.melpa.org/packages/verilog-ts-mode-badge.svg)](https://stable.melpa.org/#/verilog-ts-mode) -->
-<!-- [![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-straight/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight.yml) -->
-<!-- [![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-package-el/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package.yml) -->
+[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-straight/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight.yml)
+[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-package-el/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- [![MELPA Stable](https://stable.melpa.org/packages/verilog-ts-mode-badge.svg)](https://stable.melpa.org/#/verilog-ts-mode) -->
 
 # verilog-ts-mode.el - SystemVerilog Tree-sitter mode for Emacs #
 
@@ -64,11 +64,10 @@ To regenerate the expected outputs for a group of tests (e.g. navigation):
 $ make gen TESTS=navigation
 ```
 
-
-## Other packages
-* [vhdl-ts-mode](https://github.com/gmlarumbe/vhdl-ext): VHDL Tree-sitter mode for Emacs
-* [verilog-ext](https://github.com/gmlarumbe/verilog-ext): SystemVerilog Extensions for Emacs
-* [vhdl-ext](https://github.com/gmlarumbe/vhdl-ext): VHDL Extensions for Emacs
-* [fpga](https://github.com/gmlarumbe/fpga): FPGA & ASIC Utilities for tools of major vendors and open source for Emacs
-* [wavedrom-mode](https://github.com/gmlarumbe/wavedrom-mode): Wavedrom integration: edit and render WaveJSON files to create timing diagrams
-* [vunit-mode](https://github.com/embed-me/vunit-mode.git): Integration of [VUnit](https://github.com/VUnit/vunit) workflow for Emacs
+## Other Emacs packages
+* [vhdl-ts-mode](https://github.com/gmlarumbe/vhdl-ts-mode): VHDL Tree-sitter mode
+* [verilog-ext](https://github.com/gmlarumbe/verilog-ext): SystemVerilog Extensions
+* [vhdl-ext](https://github.com/gmlarumbe/vhdl-ext): VHDL Extensions
+* [fpga](https://github.com/gmlarumbe/fpga): FPGA & ASIC Utilities for tools of major vendors and open source
+* [wavedrom-mode](https://github.com/gmlarumbe/wavedrom-mode): edit and render WaveJSON files to create timing diagrams
+* [vunit-mode](https://github.com/embed-me/vunit-mode.git): Integration of [VUnit](https://github.com/VUnit/vunit) workflow
