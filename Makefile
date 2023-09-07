@@ -12,6 +12,5 @@ TEST_HDL_PATH = test-hdl
 ERT_TESTS = $(TEST_HDL_PATH)/ert-tests.sh
 LANGUAGE = verilog
 PACKAGE = verilog-ts-mode
-PKG_MANAGER ?= straight
 
 include $(TEST_HDL_PATH)/Makefile.mk
