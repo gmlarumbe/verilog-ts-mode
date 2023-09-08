@@ -1,8 +1,10 @@
 [![MELPA](https://melpa.org/packages/verilog-ts-mode-badge.svg)](https://melpa.org/#/verilog-ts-mode)
+[![MELPA Stable](https://stable.melpa.org/packages/verilog-ts-mode-badge.svg)](https://stable.melpa.org/#/verilog-ts-mode)
 [![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-straight/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight.yml)
-[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-package-el/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package.yml)
+[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/package-el-basic/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package_melpa_basic.yml)
+[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/workflows/ERT-MELPA-Stable/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package_melpa_stable.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-<!-- [![MELPA Stable](https://stable.melpa.org/packages/verilog-ts-mode-badge.svg)](https://stable.melpa.org/#/verilog-ts-mode) -->
+
 
 # verilog-ts-mode.el - SystemVerilog Tree-sitter mode for Emacs #
 
