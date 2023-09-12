@@ -9,11 +9,15 @@
 # verilog-ts-mode.el - SystemVerilog Tree-sitter mode for Emacs #
 
 The package `verilog-ts-mode` provides syntax highlighting,
-indentation, imenu and navigation features.
+indentation, `imenu`, `which-func`, navigation and basic beautify and completion features.
 
 `verilog-ts-mode` is derived from `verilog-mode` making AUTOs and other utilities still available.
 
-<!-- For more information see the [wiki](https://github.com/gmlarumbe/verilog-ts-mode/wiki/Tree-sitter). -->
+
+## Requirements ##
+
+- Emacs 29.1+
+- Verilog tree-sitter grammar
 
 
 ## Installation ##
@@ -31,9 +35,35 @@ To install it via [straight](https://github.com/radian-software/straight.el) wit
 (use-package verilog-ts-mode)
 ```
 
+### Tree-sitter grammar ###
+
+The package provides an interactive command to simplify the installation of the grammar:
+
+- `M-x RET verilog-ts-install-grammar RET`
+
+This command requires Git, a C compiler and (sometimes) a C++ compiler,
+and the linker to be installed and on the PATH.
+
+Once run successfully it will install the
+[forked](https://github.com/gmlarumbe/tree-sitter-verilog), maintained
+version of [tree-sitter-verilog](https://github.com/tree-sitter/tree-sitter-verilog)
+that `verilog-ts-mode` relies on.
+
+
+## Setup ##
+
+To open Verilog and SystemVerilog files with `verilog-ts-mode` simply
+add this line to your init file:
+
+``` elisp
+(add-to-list 'auto-mode-alist '("\\.s?vh?\\'" . verilog-ts-mode))
+```
+
 # Contributing #
 
-Contributions are welcome! Just stick to common Elisp conventions and run the ERT suite after testing your changes and before submitting a new PR.
+Contributions are welcome! Just stick to common Elisp conventions and
+run the ERT suite after testing your changes and before submitting a
+new PR.
 
 For new functionality add new ERT tests if possible.
 
@@ -42,7 +72,8 @@ maintaining the project and for the development of new features. *Thank you!*
 
 ## ERT Tests setup ###
 
-To run the whole ERT test suite change directory to the `verilog-ts-mode` root and run the default target:
+To run the whole ERT test suite change directory to the
+`verilog-ts-mode` root and run the default target:
 
 ```shell
 $ make
