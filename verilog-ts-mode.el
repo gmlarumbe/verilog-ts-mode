@@ -97,13 +97,19 @@ If none is found, return nil."
 (defun verilog-ts--node-identifier-name (node)
   "Return identifier name of NODE."
   (when node
-    (cond ((string-match "class_constructor" (treesit-node-type node))
+    (cond ((string-match "class_constructor\\(_prototype\\)?" (treesit-node-type node))
            "new")
           ((string-match "class_method" (treesit-node-type node))
            (or (treesit-node-text (treesit-search-subtree node "\\(function\\|task\\)_identifier") :no-prop)
                "new"))
-          ((string-match "\\(function\\|task\\)_declaration" (treesit-node-type node))
+          ((string-match "\\(function\\|task\\)_\\(declaration\\|prototype\\)" (treesit-node-type node))
            (treesit-node-text (treesit-search-subtree node "\\(function\\|task\\)_identifier") :no-prop))
+          ((string-match "\\(ansi_port_declaration\\|tf_port_item1\\)" (treesit-node-type node))
+           (treesit-node-text (treesit-search-subtree node "port_identifier") :no-prop))
+          ((string-match "local_parameter_declaration" (treesit-node-type node))
+           (treesit-node-text (treesit-search-subtree node "parameter_identifier") :no-prop))
+          ((string-match "type_declaration" (treesit-node-type node))
+           (treesit-node-text (car (last (treesit-node-children node) 2)) :no-prop)) ; Last detected node is the statement end semicolon
           (t
            (treesit-node-text (treesit-search-subtree node "simple_identifier") :no-prop)))))
 
