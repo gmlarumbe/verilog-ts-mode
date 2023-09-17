@@ -77,6 +77,9 @@ Defaults to .v, .vh, .sv and .svh."
 ;;; Utils
 ;;;; Core
 (defconst verilog-ts-instance-re "\\(module\\|interface\\)_instantiation")
+(defconst verilog-ts-port-header-ts-re
+  (eval-when-compile
+    (regexp-opt '("variable_port_header" "net_port_header1" "interface_port_header") 'symbols)))
 
 (defun verilog-ts--node-at-point ()
   "Return tree-sitter node at point."
@@ -97,21 +100,46 @@ If none is found, return nil."
 (defun verilog-ts--node-identifier-name (node)
   "Return identifier name of NODE."
   (when node
-    (cond ((string-match "class_constructor\\(_prototype\\)?" (treesit-node-type node))
+    (cond ((string-match "\\<class_constructor\\(_prototype\\)?\\>" (treesit-node-type node))
            "new")
-          ((string-match "class_method" (treesit-node-type node))
-           (or (treesit-node-text (treesit-search-subtree node "\\(function\\|task\\)_identifier") :no-prop)
+          ((string-match "\\<class_method\\>" (treesit-node-type node))
+           (or (treesit-node-text (treesit-search-subtree node "\\<\\(function\\|task\\)_identifier\\>") :no-prop)
                "new"))
-          ((string-match "\\(function\\|task\\)_\\(declaration\\|prototype\\)" (treesit-node-type node))
-           (treesit-node-text (treesit-search-subtree node "\\(function\\|task\\)_identifier") :no-prop))
-          ((string-match "\\(ansi_port_declaration\\|tf_port_item1\\)" (treesit-node-type node))
-           (treesit-node-text (treesit-search-subtree node "port_identifier") :no-prop))
-          ((string-match "local_parameter_declaration" (treesit-node-type node))
-           (treesit-node-text (treesit-search-subtree node "parameter_identifier") :no-prop))
-          ((string-match "type_declaration" (treesit-node-type node))
+          ((string-match "\\<\\(function\\|task\\)_\\(declaration\\|prototype\\)\\>" (treesit-node-type node))
+           (treesit-node-text (treesit-search-subtree node "\\<\\(function\\|task\\)_identifier\\>") :no-prop))
+          ((string-match "\\<\\(ansi_port_declaration\\|tf_port_item1\\)\\>" (treesit-node-type node))
+           (treesit-node-text (treesit-search-subtree node "\\<port_identifier\\>") :no-prop))
+          ((string-match "\\<local_parameter_declaration\\>" (treesit-node-type node))
+           (treesit-node-text (treesit-search-subtree node "\\<parameter_identifier\\>") :no-prop))
+          ((string-match "\\<type_declaration\\>" (treesit-node-type node))
            (treesit-node-text (car (last (treesit-node-children node) 2)) :no-prop)) ; Last detected node is the statement end semicolon
           (t
-           (treesit-node-text (treesit-search-subtree node "simple_identifier") :no-prop)))))
+           (treesit-node-text (treesit-search-subtree node "\\<simple_identifier\\>") :no-prop)))))
+
+(defun verilog-ts--node-identifier-type (node)
+  "Return identifier type of NODE."
+  (let ((type (treesit-node-type node)))
+    (cond (;; Variables
+           (string-match "\\<variable_decl_assignment\\>" type)
+           (treesit-node-text (verilog-ts--node-has-child-recursive (verilog-ts--node-has-parent-recursive node "\\<data_declaration\\>") "\\<data_type\\>") :no-prop))
+          ;; TODO: Still not taking (random_qualifier) sibling of (data_type) into account for rand/randc attributes
+          ;; TODO: Still not taking unpacked/queue/array dimensions into account
+          (;; Nets
+           (string-match "\\<net_decl_assignment\\>" type)
+           (verilog-ts--node-identifier-name (verilog-ts--node-has-parent-recursive node "\\<net_declaration\\>")))
+          (;; Module/interface/program ports
+           (string-match "\\<ansi_port_declaration\\>" type)
+           (treesit-node-text (treesit-search-subtree node verilog-ts-port-header-ts-re) :no-prop))
+          (;; Task/function arguments
+           (string-match "\\<tf_port_item1\\>" type)
+           (let ((port-direction (treesit-node-text (treesit-search-subtree node "\\<tf_port_direction\\>") :no-prop)))
+             (concat (when port-direction (concat port-direction " "))
+                     (treesit-node-text (treesit-search-subtree node "\\<data_type_or_implicit1\\>") :no-prop))))
+          (;; Typedefs
+           (string-match "\\<type_declaration\\>" type)
+           (treesit-node-text (verilog-ts--node-has-child-recursive (verilog-ts--node-has-parent-recursive node "\\<data_declaration\\>") "\\<data_type\\>") :no-prop))
+          (t ;; Default
+           type))))
 
 (defun verilog-ts--node-instance-name (node)
   "Return identifier name of NODE.
