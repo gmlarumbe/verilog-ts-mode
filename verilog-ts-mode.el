@@ -510,20 +510,20 @@ obj.method();"
 ;; There are some keywords that are not recognized by tree-sitter grammar.
 ;; For these ones, use regexp matching patterns inside tree-sitter (:match "^foo$")
 (defconst verilog-ts-keywords
-  '("alias" "and" "assert" "assign" "assume" "before" "binsof" "break" "case"
-    "checker" "class" "class" "clocking" "config" "const" "constraint" "cover"
-    "covergroup" "coverpoint" "cross" "default" "defparam" "disable" "do" "else"
-    "endcase" "endchecker" "endclass" "endclocking" "endconfig" "endfunction"
-    "endgenerate" "endgroup" "endinterface" "endmodule" "endpackage"
-    "endprogram" "endproperty" "endsequence" "endtask" "enum" "extends" "extern"
-    "final" "first_match" "for" "foreach" "forever" "fork" "forkjoin" "function"
-    "generate" "genvar" "if" "iff" "illegal_bins" "implements" "import"
-    "initial" "inside" "interconnect" "interface" "intersect" "join" "join_any"
-    "join_none" "local" "localparam" "modport" "new" "null" "option" "or"
-    "package" "packed" "parameter" "program" "property" "pure" "randomize"
-    "repeat" "return" "sequence" "showcancelled" "soft" "solve" "struct" "super"
-    "tagged" "task" "timeprecision" "timeunit" "type" "typedef" "union" "unique"
-    "virtual" "wait" "while" "with"
+  '("alias" "and" "assert" "assign" "assume" "before" "bind" "binsof" "break"
+    "case" "checker" "class" "class" "clocking" "config" "const" "constraint"
+    "cover" "covergroup" "coverpoint" "cross" "default" "defparam" "disable"
+    "do" "else" "endcase" "endchecker" "endclass" "endclocking" "endconfig"
+    "endfunction" "endgenerate" "endgroup" "endinterface" "endmodule"
+    "endpackage" "endprogram" "endproperty" "endsequence" "endtask" "enum"
+    "extends" "extern" "final" "first_match" "for" "foreach" "forever" "fork"
+    "forkjoin" "function" "generate" "genvar" "if" "iff" "illegal_bins"
+    "implements" "import" "initial" "inside" "interconnect" "interface"
+    "intersect" "join" "join_any" "join_none" "local" "localparam" "modport"
+    "new" "null" "option" "or" "package" "packed" "parameter" "program"
+    "property" "pure" "randomize" "repeat" "return" "sequence" "showcancelled"
+    "soft" "solve" "struct" "super" "tagged" "task" "timeprecision" "timeunit"
+    "type" "typedef" "union" "unique" "virtual" "wait" "while" "with"
     (always_keyword)       ; always, always_comb, always_latch, always_ff
     (bins_keyword)         ; bins, illegal_bins, ignore_bins
     (case_keyword)         ; case, casez, casex
@@ -658,6 +658,14 @@ OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
       (primary
        (simple_identifier) @verilog-ts-font-lock-dot-name-face
        (constant_bit_select1)))
+     ;; Class attributes
+     (variable_lvalue
+      (simple_identifier) @verilog-ts-font-lock-dot-name-face
+      (select1
+       (member_identifier)))
+     (ps_or_hierarchical_array_identifier
+      (simple_identifier) @verilog-ts-font-lock-dot-name-face
+      (simple_identifier))
      ;; Case item label (not radix)
      (case_item_expression
       (expression
@@ -722,12 +730,13 @@ OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
      ([,@verilog-ts-operators-bitwise] @verilog-ts-font-lock-operator-face)
      ([,@verilog-ts-operators-logical] @verilog-ts-font-lock-operator-face)
      ;; Operators (LRM 11.3):
-     ((assignment_operator) @verilog-ts-font-operator-face)
-     ((unary_operator) @verilog-ts-font-operator-face)
-     ;; ((binary_operator) @verilog-ts-font-operator-face)
-     ;; ((inc_or_dec_operator) @verilog-ts-font-operator-face)
-     ;; ((stream_operator) @verilog-ts-font-operator-face)
-     ((event_trigger) @verilog-ts-font-operator-face))
+     ((assignment_operator) @verilog-ts-font-lock-punctuation-face)
+     ((unary_operator) @verilog-ts-font-lock-operator-face)
+     ;; ((binary_operator) @verilog-ts-font-lock-operator-face)
+     ;; ((inc_or_dec_operator) @verilog-ts-font-lock-operator-face)
+     ;; ((stream_operator) @verilog-ts-font-lock-operator-face)
+     ;; ((event_trigger) @verilog-ts-font-lock-operator-face)
+     )
 
    :feature 'punctuation
    :language 'verilog
@@ -798,7 +807,11 @@ OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
      ;; Port names
      (named_port_connection ; 'port_identifier standalone also matches port declarations of a module
       (port_identifier (simple_identifier) @verilog-ts-font-lock-port-connection-face))
-     (formal_port_identifier (simple_identifier) @verilog-ts-font-lock-port-connection-face))
+     (formal_port_identifier (simple_identifier) @verilog-ts-font-lock-port-connection-face)
+     ;; Bind statements
+     (bind_directive
+      (bind_target_scope
+       (simple_identifier) @font-lock-type-face)))
 
    :feature 'types
    :language 'verilog
