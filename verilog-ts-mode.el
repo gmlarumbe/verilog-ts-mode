@@ -76,6 +76,8 @@ Defaults to .v, .vh, .sv and .svh."
 
 ;;; Utils
 ;;;; Core
+(defconst verilog-ts-identifier-re "[a-zA-Z_][a-zA-Z_0-9]*")
+(defconst verilog-ts-identifier-sym-re (concat "\\_<" verilog-ts-identifier-re "\\_>"))
 (defconst verilog-ts-instance-re "\\(module\\|interface\\)_instantiation")
 (defconst verilog-ts-port-header-ts-re
   (eval-when-compile
@@ -212,6 +214,14 @@ and end position."
 (defun verilog-ts--inside-module-or-interface-p ()
   "Return non-nil if point is inside a module or interface construct."
   (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\(module\\|interface\\)_declaration"))
+
+(defun verilog-ts--node-is-typedef-class-p (node)
+  "Return non-nil if NODE is a typedef class declaration."
+  (let ((type (treesit-node-type node)))
+    (and node
+         (string-match "\\<type_declaration\\>" type)
+         (string-match (concat "typedef\\s-+class\\s-+" verilog-ts-identifier-re "\\s-*;")
+                       (treesit-node-text node :no-prop)))))
 
 ;;;; Context
 (defconst verilog-ts-block-at-point-re
