@@ -29,7 +29,7 @@
 ;; - Syntax highlighting
 ;; - Indentation
 ;; - `imenu'
-;; - `'which-func'
+;; - `which-func'
 ;; - Navigation functions
 ;; - Prettify and beautify
 ;; - Completion at point
@@ -97,7 +97,8 @@ Defaults to .v, .vh, .sv and .svh."
 (defun verilog-ts--node-has-child-recursive (node node-type)
   "Return first node of type NODE-TYPE that is a child of NODE in the parsed tree.
 If none is found, return nil."
-  (treesit-search-subtree node node-type))
+  (when node
+    (treesit-search-subtree node node-type)))
 
 (defun verilog-ts--node-identifier-name (node)
   "Return identifier name of NODE."
