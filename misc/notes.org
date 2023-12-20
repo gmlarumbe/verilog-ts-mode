@@ -1,5 +1,17 @@
 * Tree-sitter dev
 ** Pending
+*** TODO verilog-ext template instance from file implementation
+- To overcome the syntax-ppss error after verilog-auto
+- Probably needs to use something different as verilog-auto
+- Something that reads the ports, inputs/outputs/interfaces of a module and instantiates them
+
+*** TODO verilog-ext beautify, navigation and which func implementations
+- Beautify already exist in verilog-ts-mode, move them to verilog-ext
+- Currently they rely on verilog-mode regexp parsing
+- Move all navigation functions to verilog-ext and implement them there
+  - Add tests for all of these (loading verilog-ts-mode)
+- Do the same with which-function
+
 *** TODO verilog-ts-forward-sexp and backward-sexp
 - [ ] Fail if point is not over a symbol
 - [ ] Fail or do something weird if point is at a comment
