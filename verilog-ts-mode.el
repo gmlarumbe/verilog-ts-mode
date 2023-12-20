@@ -102,7 +102,10 @@ If none is found, return nil."
 (defun verilog-ts--node-identifier-name (node)
   "Return identifier name of NODE."
   (when node
-    (cond ((string-match "\\<class_constructor\\(_prototype\\)?\\>" (treesit-node-type node))
+    (cond ((string-match "\\<module_declaration\\>" (treesit-node-type node))
+           ;; module_header can be composed of an optional attribute_instance with its own identifier, the module_keyword, optional lifetime and the module name
+           (treesit-node-text (treesit-search-forward (treesit-search-subtree node "\\<module_keyword\\>") "\\<simple_identifier\\>") :no-prop))
+          ((string-match "\\<class_constructor\\(_prototype\\)?\\>" (treesit-node-type node))
            "new")
           ((string-match "\\<class_method\\>" (treesit-node-type node))
            (or (treesit-node-text (treesit-search-subtree node "\\<\\(function\\|task\\)_identifier\\>") :no-prop)
