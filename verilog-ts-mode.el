@@ -1212,7 +1212,8 @@ Indent parameters depending on first parameter:
        "always_construct"
        "initial_construct"
        "final_construct"
-       "generate_region"))))
+       "generate_region")
+     'symbols)))
 
 (defvar verilog-ts-imenu-format-item-label-function
   'verilog-ts-imenu-format-item-label
@@ -1525,7 +1526,7 @@ If optional arg BWD is non-nil, search backwards."
 
 
 ;;;; Dwim
-(defconst verilog-ts-nav-beg-of-defun-dwim-inside-module-re
+(defconst verilog-ts-beg-of-defun-dwim-inside-module-re
   (eval-when-compile
     (regexp-opt
      '("module_declaration"
@@ -1533,33 +1534,35 @@ If optional arg BWD is non-nil, search backwards."
        "always_construct"
        "initial_construct"
        "final_construct"
-       "generate_region"))))
-(defconst verilog-ts-nav-beg-of-defun-dwim-outside-module-re
+       "generate_region")
+     'symbols)))
+(defconst verilog-ts-beg-of-defun-dwim-outside-module-re
   (eval-when-compile
     (regexp-opt
      '("function_declaration"
        "task_declaration"
        "class_declaration"
        "package_declaration"
-       "program_declaration"))))
+       "program_declaration")
+     'symbols)))
 
-(defun verilog-ts-nav-beg-of-defun-dwim ()
-  "Context based search upwards.
-If in a module/interface look for instantiations.
-pOtherwise look for functions/tasks."
-  (interactive)
-  (if (verilog-ts--inside-module-or-interface-p)
-      (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-nav-beg-of-defun-dwim-inside-module-re t :bwd)
-    (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-nav-beg-of-defun-dwim-outside-module-re t :bwd)))
-
-(defun verilog-ts-nav-end-of-defun-dwim ()
+(defun verilog-ts-beg-of-defun-dwim ()
   "Context based search upwards.
 If in a module/interface look for instantiations.
 Otherwise look for functions/tasks."
   (interactive)
   (if (verilog-ts--inside-module-or-interface-p)
-      (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-nav-beg-of-defun-dwim-inside-module-re t)
-    (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-nav-beg-of-defun-dwim-outside-module-re t)))
+      (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-inside-module-re t :bwd)
+    (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-outside-module-re t :bwd)))
+
+(defun verilog-ts-end-of-defun-dwim ()
+  "Context based search upwards.
+If in a module/interface look for instantiations.
+Otherwise look for functions/tasks."
+  (interactive)
+  (if (verilog-ts--inside-module-or-interface-p)
+      (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-inside-module-re t)
+    (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-outside-module-re t)))
 
 (defun verilog-ts-nav-down-dwim ()
   "Context based search downwards.
@@ -1578,6 +1581,29 @@ Otherwise look for functions, tasks and classes."
   (if (verilog-ts--inside-module-or-interface-p)
       (verilog-ts-find-module-instance-bwd)
     (verilog-ts-find-function-task-class-bwd)))
+
+(defun verilog-ts-nav-next-dwim ()
+  "Context based search next.
+If in a parenthesis, go to closing parenthesis (Elisp like).
+Otherwise move to next paragraph."
+  (interactive)
+  (if (or (member (following-char) '(?\( ?\[ ?\{ ?\) ?\] ?\}))
+          (member (preceding-char) '(?\) ?\] ?\}))
+          (string= (symbol-at-point) "begin"))
+      (verilog-ts-forward-sexp)
+    (forward-paragraph)))
+
+(defun verilog-ts-nav-prev-dwim ()
+  "Context based search previous.
+If in a parenthesis, go to opening parenthesis (Elisp like).
+Otherwise move to previous paragraph."
+  (interactive)
+  (if (or (member (following-char) '(?\( ?\[ ?\{ ?\) ?\] ?\}))
+          (member (preceding-char) '(?\) ?\] ?\}))
+          (string= (symbol-at-point) "end"))
+      (verilog-ts-backward-sexp)
+    (backward-paragraph)))
+
 
 
 ;;; Prettify
@@ -1656,6 +1682,7 @@ If block is an instance, also align parameters and ports."
         (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `indent-region'
         (when (setq params-node (verilog-ts--node-has-child-recursive node "list_of_parameter_assignments"))
           (align-regexp (treesit-node-start params-node) (treesit-node-end params-node) re 1 1 nil))
+        (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `align-regexp' for parameter list
         (when (setq ports-node (verilog-ts--node-has-child-recursive node "list_of_port_connections"))
           (align-regexp (treesit-node-start ports-node) (treesit-node-end ports-node) re 1 1 nil))))
     (message "%s : %s" type name)))
@@ -1744,12 +1771,14 @@ and the linker to be installed and on PATH."
   :doc "Keymap for SystemVerilog language with tree-sitter"
   :parent verilog-mode-map
   "TAB"     #'indent-for-tab-command
-  "C-M-a"   #'verilog-ts-nav-beg-of-defun-dwim
-  "C-M-e"   #'verilog-ts-nav-end-of-defun-dwim
   "C-M-f"   #'verilog-ts-forward-sexp
   "C-M-b"   #'verilog-ts-backward-sexp
+  "C-M-a"   #'verilog-ts-beg-of-defun-dwim
+  "C-M-e"   #'verilog-ts-end-of-defun-dwim
   "C-M-d"   #'verilog-ts-nav-down-dwim
   "C-M-u"   #'verilog-ts-nav-up-dwim
+  "C-M-n"   #'verilog-ts-nav-next-dwim
+  "C-M-p"   #'verilog-ts-nav-prev-dwim
   "C-c TAB" #'verilog-ts-pretty-declarations
   "C-c C-o" #'verilog-ts-pretty-expr
   "C-c e n" #'verilog-ts-goto-next-error
