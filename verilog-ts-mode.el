@@ -78,7 +78,7 @@ Defaults to .v, .vh, .sv and .svh."
 ;;;; Core
 (defconst verilog-ts-identifier-re "[a-zA-Z_][a-zA-Z_0-9]*")
 (defconst verilog-ts-identifier-sym-re (concat "\\_<" verilog-ts-identifier-re "\\_>"))
-(defconst verilog-ts-instance-re "\\(module\\|interface\\)_instantiation")
+(defconst verilog-ts-instance-re "\\(module\\|interface\\|checker\\)_instantiation")
 (defconst verilog-ts-port-header-ts-re
   (eval-when-compile
     (regexp-opt '("variable_port_header" "net_port_header1" "interface_port_header") 'symbols)))
@@ -348,7 +348,8 @@ With `prefix-arg', move ARG expressions."
       (if (and arg (< arg 0))
           (backward-sexp arg)
         (forward-sexp arg))
-    (let* ((node (verilog-ts--highest-node-at-symbol))
+    (let* ((node (or (verilog-ts--highest-node-at-symbol)
+                     (verilog-ts--node-at-point)))
            (beg (treesit-node-start node))
            (end (treesit-node-end node)))
       (if (and arg (< arg 0))
@@ -774,6 +775,9 @@ OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
       (simple_identifier) @font-lock-function-name-face)
      (interface_declaration
       (interface_ansi_header
+       (interface_identifier (simple_identifier) @font-lock-function-name-face)))
+     (interface_declaration
+      (interface_nonansi_header
        (interface_identifier (simple_identifier) @font-lock-function-name-face)))
      (package_declaration
       (package_identifier (simple_identifier) @font-lock-function-name-face))
