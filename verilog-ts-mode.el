@@ -1615,6 +1615,9 @@ Otherwise move to previous paragraph."
   (interactive)
   (let* ((decl-node-re verilog-ts-pretty-declarations-node-re)
          (nodes (verilog-ts-nodes-block-at-point decl-node-re))
+         (node-lines (mapcar (lambda (node)
+                               (line-number-at-pos (treesit-node-start node)))
+                             nodes))
          (indent-levels (mapcar (lambda (node)
                                   (save-excursion
                                     (goto-char (treesit-node-start node))
@@ -1628,12 +1631,13 @@ Otherwise move to previous paragraph."
     ;; Start processing
     (when nodes
       (save-excursion
-        (goto-char (treesit-node-start (car nodes)))
-        (while (setq current-node (verilog-ts-search-node-block-at-point decl-node-re))
+        (dolist (line node-lines )
+          (goto-char (point-min))
+          (forward-line (1- line))
+          (setq current-node (verilog-ts-search-node-block-at-point decl-node-re))
           (goto-char (treesit-node-start current-node))
           (just-one-space)
-          (indent-to indent-level-max)
-          (goto-char (treesit-node-end (verilog-ts-search-node-block-at-point decl-node-re))))))))
+          (indent-to indent-level-max))))))
 
 (defun verilog-ts-pretty-expr ()
   "Line up expressions around point."
@@ -1641,6 +1645,9 @@ Otherwise move to previous paragraph."
   (let* ((decl-node-re verilog-ts-pretty-expr-node-re)
          (align-node-re "variable_lvalue")
          (nodes (verilog-ts-nodes-block-at-point decl-node-re))
+         (node-lines (mapcar (lambda (node)
+                               (line-number-at-pos (treesit-node-start node)))
+                             nodes))
          (indent-levels (mapcar (lambda (node)
                                   (let ((lhs-node (verilog-ts--node-has-child-recursive node align-node-re)))
                                     (save-excursion
@@ -1654,8 +1661,10 @@ Otherwise move to previous paragraph."
     ;; Start processing
     (when nodes
       (save-excursion
-        (goto-char (treesit-node-start (car nodes)))
-        (while (setq current-node (verilog-ts-search-node-block-at-point align-node-re))
+        (dolist (line node-lines)
+          (goto-char (point-min))
+          (forward-line (1- line))
+          (setq current-node (verilog-ts-search-node-block-at-point align-node-re))
           (goto-char (treesit-node-end current-node))
           (just-one-space)
           (indent-to indent-level-max))))))
