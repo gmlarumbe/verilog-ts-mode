@@ -1752,6 +1752,19 @@ Complete with keywords and current buffer identifiers."
     (list start end candidates . nil)))
 
 
+;;; Auto
+(defun verilog-ts-auto (&optional inject)
+  "Expand AUTO statements in `verilog-ts-mode'.
+
+Workaround to run `verilog-auto' in `verilog-ts-mode' avoiding `syntax-ppss'
+errors:
+- https://github.com/gmlarumbe/verilog-ext/issues/12"
+  (interactive)
+  (verilog-mode)
+  (verilog-auto inject)
+  (verilog-ts-mode))
+
+
 ;;; Major-mode
 ;;;; Setup
 ;;;###autoload
@@ -1782,7 +1795,8 @@ and the linker to be installed and on PATH."
   "C-c TAB" #'verilog-ts-pretty-declarations
   "C-c C-o" #'verilog-ts-pretty-expr
   "C-c e n" #'verilog-ts-goto-next-error
-  "C-c e p" #'verilog-ts-goto-prev-error)
+  "C-c e p" #'verilog-ts-goto-prev-error
+  "C-c C-a" #'verilog-ts-auto)
 
 (defvar verilog-ts-mode-syntax-table
   (let ((table (make-syntax-table)))
