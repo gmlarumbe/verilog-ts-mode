@@ -2,7 +2,7 @@
 #
 #  Makefile for test-hdl with verilog-ts-mode
 #
-#  Copyright (c) 2022-2023 Gonzalo Larumbe
+#  Copyright (c) 2022-2024 Gonzalo Larumbe
 #  All rights reserved.
 # 
 ######################################################
