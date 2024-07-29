@@ -961,6 +961,24 @@ parameter A = 0,
   (let ((child-node (treesit-node-child (verilog-ts--node-at-bol) 0)))
     (string= (treesit-node-type child-node) "data_type")))
 
+(defun verilog-ts--matcher-import-package-ansi-header (&rest _)
+  "A tree-sitter simple indent matcher.
+Return non-nil if matches import package on ANSI header:
+   module foo
+       import bar_pkg::*;
+       import baz_pkg::*;
+           (
+       input wire clk,
+       input wire rst
+   );"
+  (let ((node (treesit-node-type (verilog-ts--node-at-bol)))
+        (child-node (treesit-node-type (treesit-node-child (verilog-ts--node-at-bol) 0)))
+        (parent-node (treesit-node-type (treesit-node-parent (verilog-ts--node-at-bol)))))
+    (or (and (string= node "module_ansi_header") ; First import declaration
+             (string= child-node "package_import_declaration"))
+        (and (string= node "package_import_declaration") ; Subsequent import declarations
+             (string= parent-node "module_ansi_header")))))
+
 ;;;; Anchors
 (defun verilog-ts--anchor-end-indent (node parent &rest _)
   "A tree-sitter simple indent anchor for NODE and PARENT.
@@ -1094,6 +1112,14 @@ Indent parameters depending on first parameter:
       (skip-chars-forward "( \t")
       (point))))
 
+(defun verilog-ts--anchor-import-package-ansi-header (node &rest _)
+  "A tree-sitter simple indent anchor for NODE and PARENT.
+Indent package imports on ANSI headers, used in conjunction with
+`verilog-ts--matcher-import-package-ansi-header'."
+  (let ((indent-node (verilog-ts--node-has-parent-recursive node "module_declaration")))
+    (save-excursion
+      (goto-char (treesit-node-start indent-node)))))
+
 (defun verilog-ts--anchor-point-min (&rest _)
   "A tree-sitter simple indent anchor."
   (save-excursion
@@ -1146,6 +1172,8 @@ Indent parameters depending on first parameter:
       verilog-ts--anchor-parameter-port 0)
      ((node-is "parameter_port_declaration") parent-bol verilog-ts-indent-level) ; First instance parameter (without parameter keyword)
      ;; import packages
+     (verilog-ts--matcher-import-package-ansi-header verilog-ts--anchor-import-package-ansi-header verilog-ts-indent-level)
+     ((node-is "package_import_declaration") parent-bol verilog-ts-indent-level)
      ((and (node-is "package_or_generate_item_declaration")
            (parent-is "package_declaration"))
       parent-bol verilog-ts-indent-level)
