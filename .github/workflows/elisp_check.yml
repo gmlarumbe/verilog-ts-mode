@@ -14,7 +14,9 @@ jobs:
           - 29.1
           - 29.2
           - 29.3
+          - 29.4
           - release-snapshot
+          - snapshot
         elisp-check:
           - melpa
 
