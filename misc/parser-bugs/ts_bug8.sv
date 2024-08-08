@@ -44,11 +44,9 @@ endmodule
 class foo;
 
 `ifdef XSIM
-          // std::randomize(w_beat) may behave differently to w_beat.randomize() wrt. limited ranges
-          // Keeping alternate implementation for XSIM only
-          rand_success = std::randomize(w_beat); assert (rand_success);
+          rand_success foo;
 `else
-          rand_success = w_beat.randomize(); assert (rand_success);
+          rand_success foo;
 `endif
 
 endclass
@@ -56,11 +54,9 @@ endclass
 package foo;
 
 `ifdef XSIM
-          // std::randomize(w_beat) may behave differently to w_beat.randomize() wrt. limited ranges
-          // Keeping alternate implementation for XSIM only
-          rand_success = std::randomize(w_beat); assert (rand_success);
+          rand_success foo;
 `else
-          rand_success = w_beat.randomize(); assert (rand_success);
+          rand_success foo;
 `endif
 
 endpackage
@@ -70,9 +66,9 @@ module foo;
 `ifdef XSIM
           // std::randomize(w_beat) may behave differently to w_beat.randomize() wrt. limited ranges
           // Keeping alternate implementation for XSIM only
-          rand_success = std::randomize(w_beat); assert (rand_success);
+          rand_success foo;
 `else
-          rand_success = w_beat.randomize(); assert (rand_success);
+          rand_success foo;
 `endif
 
 endmodule

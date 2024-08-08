@@ -2,6 +2,8 @@
 // randsequence and randcase are not supported by tree-sitter-verilog
 // casex, casez not supported in implicit generate, outside of procedural block
 
+// INFO: This one seeems to have bad syntax, because it's supported on new syntax
+
 module asdf;
 
 randsequence bar

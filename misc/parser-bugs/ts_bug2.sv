@@ -5,8 +5,10 @@
 
 module x;
 
-    forever @E
-    begin
-        end
+    initial begin
+        forever @E
+            begin
+            end
+    end
 
 endmodule
