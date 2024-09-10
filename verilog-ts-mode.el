@@ -1824,6 +1824,9 @@ Otherwise move to previous paragraph."
   (interactive)
   (let* ((decl-node-re verilog-ts-pretty-declarations-node-re)
          (nodes (verilog-ts-nodes-block-at-point decl-node-re))
+         ;; TODO: Fix this!
+         ;; (nodes (verilog-ts-children-block-at-point (lambda (child)
+         ;;                                              (string= (treesit-node-type child) decl-node-re))))
          (node-lines (mapcar (lambda (node)
                                (line-number-at-pos (treesit-node-start node)))
                              nodes))
@@ -1853,6 +1856,7 @@ Otherwise move to previous paragraph."
   (interactive)
   (let* ((decl-node-re verilog-ts-pretty-expr-node-re)
          (align-node-re "variable_lvalue")
+         ;; TODO: Fix this!
          (nodes (verilog-ts-nodes-block-at-point decl-node-re))
          (node-lines (mapcar (lambda (node)
                                (line-number-at-pos (treesit-node-start node)))

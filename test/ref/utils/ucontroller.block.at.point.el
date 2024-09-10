@@ -1,0 +1,8 @@
+(("module_declaration" . 839)
+ ("module_declaration" . 840)
+ ("module_declaration" . 988)
+ ("module_declaration" . 1288)
+ ("module_instantiation" . 2699)
+ ("module_declaration" . 4873)
+ ("module_declaration" . 4874)
+ ("module_declaration" . 4888))
