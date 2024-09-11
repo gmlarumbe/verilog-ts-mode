@@ -4,7 +4,7 @@
 
 ;; Author: Gonzalo Larumbe <gonzalomlarumbe@gmail.com>
 ;; URL: https://github.com/gmlarumbe/verilog-ts-mode
-;; Version: 0.2.0
+;; Version: 0.2.1
 ;; Keywords: Verilog, IDE, Tools
 ;; Package-Requires: ((emacs "29.1"))
 
