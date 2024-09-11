@@ -38,7 +38,7 @@
                                :fn #'test-hdl-imenu-test-file
                                :args '(verilog-ts-mode)))
 
-(ert-deftest verilog-ts-mode::imenu ()
+(ert-deftest imenu ()
   (dolist (file verilog-ts-mode-test-imenu-file-list)
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
                                                          :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-imenu (test-hdl-basename file "el"))

@@ -102,7 +102,7 @@
                                            :pos-list ,pos-list)))))
 
 
-(ert-deftest verilog-ts-mode::utils::block-at-point ()
+(ert-deftest utils::block-at-point ()
   (dolist (file-and-pos verilog-ts-mode-test-utils-block-at-point-file-and-pos)
     (let ((file (car file-and-pos))
           (pos-list (cdr file-and-pos)))
@@ -115,7 +115,7 @@
                                                                    :pos-list ,pos-list))
                                     (file-name-concat verilog-ts-mode-test-ref-dir-utils (test-hdl-basename file "block.at.point.el")))))))
 
-(ert-deftest verilog-ts-mode::utils::instance-at-point ()
+(ert-deftest utils::instance-at-point ()
   (dolist (file-and-pos verilog-ts-mode-test-utils-instance-at-point-file-and-pos)
     (let ((file (car file-and-pos))
           (pos-list (cdr file-and-pos)))
@@ -129,7 +129,7 @@
                                     (file-name-concat verilog-ts-mode-test-ref-dir-utils (test-hdl-basename file "inst.point.el")))))))
 
 
-(ert-deftest verilog-ts-mode::utils::module-at-point ()
+(ert-deftest utils::module-at-point ()
   (dolist (file-and-pos verilog-ts-mode-test-utils-module-at-point-file-and-pos)
     (let ((file (car file-and-pos))
           (pos-list (cdr file-and-pos)))

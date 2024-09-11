@@ -47,8 +47,7 @@
 
 (defun verilog-ts-mode-test-beautify-file ()
   (verilog-ts-mode)
-  (let* ((identifier-re verilog-ts-identifier-re)
-         (beautify-re (concat "\\(?1:^\\s-*\\." identifier-re "\\)\\(?2:\\s-*\\)(")))
+  (let ((beautify-re (concat "\\(?1:^\\s-*\\." verilog-ts-identifier-re "\\)\\(?2:\\s-*\\)(")))
     ;; Clean blanks in ports (similar to `verilog-ext-replace-regexp-whole-buffer')
     (save-excursion
       (goto-char (point-min))
@@ -122,14 +121,14 @@
                                :fn #'verilog-ts-mode-test-prettify-file))
 
 
-(ert-deftest verilog-ts-mode::beautify ()
+(ert-deftest beautify ()
   (dolist (file verilog-ts-mode-test-beautify-file-list)
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
                                                          :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-beautify (test-hdl-basename file "beauty.sv"))
                                                          :fn #'verilog-ts-mode-test-beautify-file)
                                   (file-name-concat verilog-ts-mode-test-ref-dir-beautify (test-hdl-basename file "beauty.sv"))))))
 
-(ert-deftest verilog-ts-mode::prettify ()
+(ert-deftest prettify ()
   (dolist (file verilog-ts-mode-test-prettify-file-list)
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
                                                          :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-beautify (test-hdl-basename file "pretty.sv"))

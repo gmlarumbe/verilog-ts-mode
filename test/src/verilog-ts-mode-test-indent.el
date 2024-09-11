@@ -42,7 +42,7 @@
                                :fn #'test-hdl-indent-buffer
                                :args '(verilog-ts-mode verilog-ts-mode-test-indent-fn)))
 
-(ert-deftest verilog-ts-mode::indent ()
+(ert-deftest indent ()
   (dolist (file verilog-ts-mode-test-indent-file-list)
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
                                                          :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-indent (test-hdl-basename file))

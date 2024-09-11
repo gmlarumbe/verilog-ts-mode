@@ -43,7 +43,7 @@
                                :out-file-ext "faceup"
                                :fn #'verilog-ts-mode-test-faceup-file))
 
-(ert-deftest verilog-ts-mode::faceup ()
+(ert-deftest faceup ()
   (dolist (file verilog-ts-mode-test-faceup-file-list)
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
                                                          :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-faceup (test-hdl-basename file "faceup"))

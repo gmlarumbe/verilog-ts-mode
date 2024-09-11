@@ -147,7 +147,7 @@
                                            :pos-list ,pos-list)))))
 
 
-(ert-deftest verilog-ts-mode::navigation::instances ()
+(ert-deftest navigation::instances ()
   (dolist (file verilog-ts-mode-test-navigation-rtl-file-list)
     ;; Forward
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
@@ -168,7 +168,7 @@
                                   (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "inst.bwd.el"))))))
 
 
-(ert-deftest verilog-ts-mode::navigation::classes ()
+(ert-deftest navigation::classes ()
   (dolist (file verilog-ts-mode-test-navigation-tb-file-list)
     ;; Forward
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
@@ -189,7 +189,7 @@
                                   (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "class.bwd.el"))))))
 
 
-(ert-deftest verilog-ts-mode::navigation::task-functions ()
+(ert-deftest navigation::task-functions ()
   (dolist (file verilog-ts-mode-test-navigation-tb-file-list)
     ;; Forward
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
@@ -210,7 +210,7 @@
                                   (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "tf.bwd.el"))))))
 
 
-(ert-deftest verilog-ts-mode::navigation::blocks ()
+(ert-deftest navigation::blocks ()
   (dolist (file verilog-ts-mode-test-navigation-block-nav-file-list)
     ;; Forward
     (should (test-hdl-files-equal (test-hdl-process-file :test-file file
@@ -231,7 +231,7 @@
                                   (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "block.bwd.el"))))))
 
 
-(ert-deftest verilog-ts-mode::navigation::defun-level-up ()
+(ert-deftest navigation::defun-level-up ()
   (dolist (file-and-pos verilog-ts-mode-test-navigation-defun-up-file-and-pos)
     (let ((file (car file-and-pos))
           (pos-list (cdr file-and-pos)))
@@ -245,7 +245,7 @@
                                     (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "defun.up.el")))))))
 
 
-(ert-deftest verilog-ts-mode::navigation::defun-level-down ()
+(ert-deftest navigation::defun-level-down ()
   (dolist (file-and-pos verilog-ts-mode-test-navigation-defun-down-file-and-pos)
     (let ((file (car file-and-pos))
           (pos-list (cdr file-and-pos)))
