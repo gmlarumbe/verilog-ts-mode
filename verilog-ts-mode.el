@@ -644,7 +644,7 @@ obj.method();"
    :feature 'keyword
    :language 'verilog
    `((["begin" "end" "this"] @verilog-ts-font-lock-grouping-keywords-face)
-     ([(port_direction) "ref"] @verilog-ts-font-lock-direction-face) ; Explicitly add "ref" to consider tf_port_direction "const ref"
+     (["input" "output" "inout" "ref"] @verilog-ts-font-lock-direction-face)
      ([,@verilog-ts-keywords] @font-lock-keyword-face))
 
    :feature 'preprocessor
@@ -1984,9 +1984,12 @@ errors:
 
 Injection if appropriate if INJECT is non-nil."
   (interactive)
-  (verilog-mode)
-  (verilog-auto inject)
-  (verilog-ts-mode))
+  (unwind-protect
+      (progn
+        (verilog-mode)
+        (verilog-auto inject)
+        (verilog-ts-mode))
+    (verilog-ts-mode)))
 
 
 ;;; Major-mode
