@@ -86,6 +86,21 @@ Defaults to .v, .vh, .sv and .svh."
                  (const :tag "tree-group" tree-group))
   :group 'verilog-ts)
 
+(defcustom verilog-ts-which-func-style 'custom
+  "Style of `which-func' display for current Verilog buffer.
+
+- Simple: show last element of current Imenu entry
+- Breadcrumb: display hierarchy of current Imenu entry
+- Custom: use custom `verilog-ts-mode' implementation for `which-func':
+    - Format A:B
+    - A represents the type of current node, B its name
+    - For instances, A is the instance name and B the instance type."
+  :type '(choice (const :tag "simple" simple)
+                 (const :tag "breadcrumb" breadcrumb)
+                 (const :tag "custom" custom))
+  :group 'verilog-ts)
+
+
 ;;; Utils
 ;;;; Core
 (defconst verilog-ts-instance-re "\\_<\\(module\\|interface\\|program\\|gate\\|udp\\|checker\\)_instantiation\\_>")
@@ -1645,40 +1660,64 @@ to SystemVerilog parser."
 (defvar-local verilog-ts-which-func-extra nil
   "Variable to hold extra information for `which-func'.")
 
-(defun verilog-ts-which-func-shorten-block (block-type)
-  "Return shortened name of BLOCK-TYPE, if possible."
-  (cond ((string= "function_declaration"          block-type) "func")
-        ((string= "class_constructor_declaration" block-type) "func")
-        ((string= "task_declaration"              block-type) "task")
-        ((string= "class_declaration"             block-type) "cls")
-        ((string= "module_declaration"            block-type) "mod")
-        ((string= "interface_declaration"         block-type) "itf")
-        ((string= "package_declaration"           block-type) "pkg")
-        ((string= "program_declaration"           block-type) "pgm")
-        ((string= "generate_region"               block-type) "gen")
-        ((string= "class_property"                block-type) "prop")
-        (t block-type)))
+(defvar verilog-ts-which-func-format-function 'verilog-ts-which-func-format-shorten
+  "Variable of the function to be called to return the type in `which-func'.
+
+It must have one argument (tree-sitter node) and must return a string with the
+type.")
+
+(defun verilog-ts-which-func-format-simple (node)
+  "Return tree-sitter type of current NODE."
+  (treesit-node-type node))
+
+(defun verilog-ts-which-func-format-shorten (node)
+  "Return shortened name of NODE if possible."
+  (pcase (treesit-node-type node)
+    ("module_declaration"            "mod")
+    ("interface_declaration"         "itf")
+    ("program_declaration"           "pgm")
+    ("package_declaration"           "pkg")
+    ("class_declaration"             "cls")
+    ("function_declaration"          "fun")
+    ("task_declaration"              "task")
+    ("class_constructor_declaration" "new")
+    ("function_prototype"            "fun")
+    ("task_prototype"                "task")
+    ("class_constructor_prototype"   "new")
+    ("generate_region"               "gen")
+    ("module_instantiation"          (verilog-ts--node-instance-name node))
+    ("interface_instantiation"       (verilog-ts--node-instance-name node))
+    (_                               (treesit-node-type node))))
 
 (defun verilog-ts-which-func-function ()
   "Retrieve `which-func' candidates."
   (let ((node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-imenu-create-index-re)))
     (when node
       (setq verilog-ts-which-func-extra (verilog-ts--node-identifier-name node))
-      (verilog-ts-which-func-shorten-block (treesit-node-type node)))))
+      (funcall verilog-ts-which-func-format-function node))))
 
-(defun verilog-ts-which-func ()
+(defun verilog-ts-which-func-setup ()
   "Hook for `verilog-ts-mode' to enable `which-func'."
-  (setq-local which-func-functions '(verilog-ts-which-func-function))
-  (setq-local which-func-format
-              `("["
-                (:propertize which-func-current
-                 face (which-func :weight bold)
-                 mouse-face mode-line-highlight)
-                ":"
-                (:propertize verilog-ts-which-func-extra
-                 face which-func
-                 mouse-face mode-line-highlight)
-                "]")))
+  (pcase verilog-ts-which-func-style
+    ('simple
+     (setq-local which-func-functions nil)
+     (setq-local which-func-imenu-joiner-function (lambda (x) (car (last x)))))
+    ('breadcrumb
+     (setq-local which-func-functions nil)
+     (setq-local which-func-imenu-joiner-function (lambda (x) (string-join x "."))))
+    ('custom
+     (setq-local which-func-functions '(verilog-ts-which-func-function))
+     (setq-local which-func-format
+                 `("["
+                   (:propertize which-func-current
+                    face (which-func :weight bold)
+                    mouse-face mode-line-highlight)
+                   ":"
+                   (:propertize verilog-ts-which-func-extra
+                    face which-func
+                    mouse-face mode-line-highlight)
+                   "]")))
+    (_ (error "Wrong value for `verilog-ts-which-func-style': set to default/breadcrumb/custom"))))
 
 
 ;;; Navigation
@@ -2159,7 +2198,7 @@ and the linker to be installed and on PATH."
     ;; Imenu.
     (verilog-ts-imenu-setup)
     ;; Which-func
-    (verilog-ts-which-func)
+    (verilog-ts-which-func-setup)
     ;; Completion
     (add-hook 'completion-at-point-functions #'verilog-ts-completion-at-point nil 'local)
     ;; Setup.
