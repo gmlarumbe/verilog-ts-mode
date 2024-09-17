@@ -73,6 +73,18 @@ Defaults to .v, .vh, .sv and .svh."
   :group 'verilog-ts
   :type 'string)
 
+(defcustom verilog-ts-imenu-style 'tree
+  "Style of generated Imenu index for current Verilog buffer.
+
+- Simple: default basic grouping into categories.
+- Tree: tree-like structure without further processing.
+- Tree-group: tree-like structure with some processing to group same type
+              elements into subcategories (useful for display with third party
+              packages such as `imenu-list')."
+  :type '(choice (const :tag "simple" simple)
+                 (const :tag "tree" tree)
+                 (const :tag "tree-group" tree-group))
+  :group 'verilog-ts)
 
 ;;; Utils
 ;;;; Core
@@ -1413,26 +1425,19 @@ It must be a function with two arguments: TYPE and NAME.")
   "Imenu function used to format a parent jump item label.
 It must be a function with two arguments: TYPE and NAME.")
 
-(defun verilog-ts-imenu-format-item-label (type name)
+(defun verilog-ts-imenu-format-item-label (_type name)
   "Return Imenu label for single node using TYPE and NAME."
-  (format "%s (%s)" name type))
+  (format "%s" name))
 
-(defun verilog-ts-imenu-format-parent-item-label (type name)
+(defun verilog-ts-imenu-format-parent-item-label (_type name)
   "Return Imenu label for parent node using TYPE and NAME."
-  (format "%s..." (verilog-ts-imenu-format-item-label type name)))
+  (format "%s" name))
 
 (defun verilog-ts-imenu-format-parent-item-jump-label (type _name)
   "Return Imenu label for parent node jump using TYPE and NAME."
-  (cond ((eq type 'cls)
-         "*class definition*")
-        ((eq type 'fun)
-         "*function definition*")
-        ((eq type 'task)
-         "*task definition*")
-        (t
-         (format "%s" type))))
+  (format "*%s*" type))
 
-(defun verilog-ts-imenu-treesit-create-index-1 (node)
+(defun verilog-ts-imenu-treesit-create-index-tree (node)
   "Given a sparse tree, create an imenu alist.
 
 NODE is the root node of the tree returned by
@@ -1453,50 +1458,140 @@ Copied from Python's `python--imenu-treesit-create-index-1' and adapted to
 SystemVerilog parser."
   (let* ((ts-node (car node))
          (children (cdr node))
-         (subtrees (mapcan #'verilog-ts-imenu-treesit-create-index-1
+         (subtrees (mapcan #'verilog-ts-imenu-treesit-create-index-tree
                            children))
-         (type (pcase (treesit-node-type ts-node)
-                 ("module_declaration"            'mod)
-                 ("interface_declaration"         'itf)
-                 ("program_declaration"           'pgm)
-                 ("package_declaration"           'pkg)
-                 ("class_declaration"             'cls)
-                 ("class_property"                'prop)
-                 ("function_declaration"          'fun)
-                 ("task_declaration"              'task)
-                 ("class_constructor_declaration" 'new)
-                 ("function_prototype"            'fun)
-                 ("task_prototype"                'task)
-                 ("class_constructor_prototype"   'new)
-                 ("module_instantiation"          'inst)
-                 ("always_construct"              'always)
-                 ("generate_region"               'gen)))
+         (type (treesit-node-type ts-node))
          ;; The root of the tree could have a nil ts-node.
          (name (when ts-node
-                 (verilog-ts--node-identifier-name ts-node)))
+                 (or (verilog-ts--node-identifier-name ts-node)
+                     "Anonymous")))
          (marker (when ts-node
                    (set-marker (make-marker)
                                (treesit-node-start ts-node)))))
     (cond
+     ;; Root node
      ((null ts-node)
       subtrees)
+     ;; Non-leaf node
      (subtrees
-      (let ((parent-label (funcall verilog-ts-imenu-format-parent-item-label-function
-                                   type
-                                   name))
-            (jump-label (funcall verilog-ts-imenu-format-parent-item-jump-label-function
-                                 type
-                                 name)))
+      (let ((parent-label (funcall verilog-ts-imenu-format-parent-item-label-function type name))
+            (jump-label (funcall verilog-ts-imenu-format-parent-item-jump-label-function type name)))
         `((,parent-label
            ,(cons jump-label marker)
            ,@subtrees))))
-     (t (let ((label (funcall verilog-ts-imenu-format-item-label-function
-                              type
-                              name)))
+     ;; Leaf node
+     (t (let ((label (funcall verilog-ts-imenu-format-item-label-function type name)))
           (list (cons label marker)))))))
 
-(defun verilog-ts-imenu-create-index (&optional node)
+(defun verilog-ts--imenu-treesit-create-index-tree-group-process (subtree)
+  "Utility function to process SUBTREE and group leaves into categories."
+  (let (instances always initial tasks functions properties default)
+    (mapc
+     (lambda (elm)
+       (if (and (listp elm) (listp (cdr elm)) (listp (cddr elm)) ; Basic checks due to custom imenu entry format for grouping
+                (markerp (cadr elm))   ; Element can be grouped because it was added ...
+                (stringp (caddr elm))) ; ... a third field, indicating tree-sitter type
+           (let ((type (caddr elm))
+                 (entry (cons (car elm) (cadr elm))))
+             (pcase type
+               ((or "module_instantiation" "interface_instantiation") (push entry instances))
+               ("always_construct" (push entry always))
+               ("initial_construct" (push entry initial))
+               ((or "task_declaration" "task_prototype") (push entry tasks))
+               ((or "function_declaration" "function_prototype" "class_constructor_declaration" "class_constructor_prototype") (push entry functions))
+               ("class_property" (push entry properties))
+               (_ (push entry default))))
+         ;; Otherwise entry cannot be grouped because it already was, or because it was a leaf node
+         (push elm default)))
+     subtree)
+    ;; Populate return value
+    (if (or always instances initial tasks functions properties) ; Avoid processing when no grouping is required
+        (progn
+          (when instances
+            (setq instances (nreverse instances))
+            (setq default `(("Instances" ,@instances) ,@default)))
+          (when always
+            (setq always (nreverse always))
+            (setq default `(("Always" ,@always) ,@default)))
+          (when initial
+            (setq initial (nreverse initial))
+            (setq default `(("Initial" ,@initial) ,@default)))
+          (when tasks
+            (setq tasks (nreverse tasks))
+            (setq default `(("Tasks" ,@tasks) ,@default)))
+          (when functions
+            (setq functions (nreverse functions))
+            (setq default `(("Functions" ,@functions) ,@default)))
+          (when properties
+            (setq properties (nreverse properties))
+            (setq default `(("Properties" ,@properties) ,@default)))
+          default)
+      ;; Else it might be processing of the leaf nodes of top subtree and reordering is required
+      (nreverse default))))
+
+(defun verilog-ts-imenu-treesit-create-index-tree-group (node)
+  "Given a sparse tree, create an imenu alist.
+
+NODE is the root node of the tree returned by
+`treesit-induce-sparse-tree' (not a tree-sitter node, its car is
+a tree-sitter node).  Walk that tree and return an imenu alist.
+
+Return a list of ENTRY where
+
+ENTRY := (NAME . MARKER)
+       | (NAME . ((JUMP-LABEL . MARKER)
+                  ENTRY
+                  ...)
+
+NAME is the function/class's name, JUMP-LABEL is like \"*function
+definition*\".
+
+Copied from Python's `python--imenu-treesit-create-index-1' and adapted to
+SystemVerilog parser."
+  (let* ((ts-node (car node))
+         (children (cdr node))
+         (subtrees (mapcan #'verilog-ts-imenu-treesit-create-index-tree-group
+                           children))
+         (type (treesit-node-type ts-node))
+         ;; The root of the tree could have a nil ts-node.
+         (name (when ts-node
+                 (or (verilog-ts--node-identifier-name ts-node)
+                     "Anonymous")))
+         (marker (when ts-node
+                   (set-marker (make-marker)
+                               (treesit-node-start ts-node)))))
+    (cond
+     ;; Root node
+     ((null ts-node)
+      (verilog-ts--imenu-treesit-create-index-tree-group-process subtrees))
+     ;; Non-leaf node
+     (subtrees
+      (let ((parent-label (funcall verilog-ts-imenu-format-parent-item-label-function type name))
+            (jump-label (funcall verilog-ts-imenu-format-parent-item-jump-label-function type name)))
+        `((,parent-label
+           ,(cons jump-label marker)
+           ,@(verilog-ts--imenu-treesit-create-index-tree-group-process subtrees)))))
+     ;; Leaf node
+     (t (let ((label (funcall verilog-ts-imenu-format-item-label-function type name)))
+          (if (member type '("module_instantiation"
+                             "interface_instantiation"
+                             "always_construct"
+                             "initial_construct"
+                             "function_declaration"
+                             "task_declaration"
+                             "class_constructor_declaration"
+                             "function_prototype"
+                             "task_prototype"
+                             "class_constructor_prototype"
+                             "class_property"))
+              (list (list label marker type))
+            (list (cons label marker))))))))
+
+(defun verilog-ts--imenu-create-index (func &optional node)
   "Imenu index builder function for `verilog-ts-mode'.
+
+FUNC is the function that traverses the syntax tree and builds the index suited
+for Imenu.
 
 NODE is the root node of the subtree you want to build an index
 of.  If nil, use the root node of the whole parse tree.
@@ -1508,13 +1603,42 @@ to SystemVerilog parser."
                 node
                 verilog-ts-imenu-create-index-re
                 nil 1000)))
-    (verilog-ts-imenu-treesit-create-index-1 tree)))
+    (funcall func tree)))
 
-(defun verilog-ts--defun-name (node)
-  "Return the defun name of NODE.
+(defun verilog-ts-imenu-create-index-tree ()
+  "Create `imenu' index alist with a tree structure."
+  (verilog-ts--imenu-create-index #'verilog-ts-imenu-treesit-create-index-tree))
 
-Return nil if there is no name or if NODE is not a defun node."
-  (verilog-ts--node-identifier-name node))
+(defun verilog-ts-imenu-create-index-tree-group ()
+  "Create `imenu' index alist with a tree structure with subgroups."
+  (verilog-ts--imenu-create-index #'verilog-ts-imenu-treesit-create-index-tree-group))
+
+(defun verilog-ts-imenu-setup ()
+  "Setup `imenu' based on value of `verilog-ts-imenu-style'."
+  (pcase verilog-ts-imenu-style
+    ('simple
+     (setq-local treesit-simple-imenu-settings
+                 `(("Module" "\\`entity_declaration\\'" nil nil)
+                   ("Interface" "\\`interface_declaration\\'" nil nil)
+                   ("Program" "\\`program_declaration\\'" nil nil)
+                   ("Package" "\\`package_declaration\\'" nil nil)
+                   ("Class" "\\`class_declaration\\'" nil nil)
+                   ("Function" "\\`\\(function\\|class_constructor\\)_declaration\\'" nil nil)
+                   ("Task" "\\`task_declaration\\'" nil nil)
+                   ("Function prototype" "\\`\\(function\\|class_constructor\\)_prototype\\'" nil nil)
+                   ("Task prototype" "\\`task_prototype\\'" nil nil)
+                   ("Property" "\\`class_property\\'" nil nil)
+                   ("Always" "\\`always_construct\\'" nil nil)
+                   ("Initial" "\\`initial_construct\\'" nil nil)
+                   ("Final" "\\`final_construct\\'" nil nil)
+                   ("Generate" "\\`generate_region\\'" nil nil)
+                   ("Instance" "\\`\\(module\\|interface\\)_instantiation\\'" nil)))
+     (setq-local treesit-defun-name-function #'verilog-ts--node-identifier-name))
+    ('tree
+     (setq-local imenu-create-index-function #'verilog-ts-imenu-create-index-tree))
+    ('tree-group
+     (setq-local imenu-create-index-function #'verilog-ts-imenu-create-index-tree-group))
+    (_ (error "Wrong value for `verilog-ts-imenu-style': set to simple/tree/tree-group"))))
 
 
 ;;; Which-func
@@ -2033,7 +2157,7 @@ and the linker to be installed and on PATH."
     ;; Navigation.
     (setq-local treesit-defun-type-regexp verilog-ts--defun-type-regexp)
     ;; Imenu.
-    (setq-local imenu-create-index-function #'verilog-ts-imenu-create-index)
+    (verilog-ts-imenu-setup)
     ;; Which-func
     (verilog-ts-which-func)
     ;; Completion
