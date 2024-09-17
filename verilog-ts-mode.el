@@ -947,20 +947,20 @@ obj.method();"
 ;;; Indent
 ;;;; Matchers
 (defun verilog-ts--matcher-unit-scope (node parent &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE and PARENT.
 Matches if point is at $unit scope."
   (let* ((root (treesit-buffer-root-node)))
     (or (treesit-node-eq node root)
         (treesit-node-eq parent root))))
 
 (defun verilog-ts--matcher-blank-line (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Matches if point is at a blank line."
   (unless node
     t))
 
 (defun verilog-ts--matcher-continued-string (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Matches if point is at a continued quoted string."
   (let ((node-at-point (verilog-ts--node-at-point))) ; There is no node-at-bol in this case
     (and (not node)
@@ -988,7 +988,7 @@ Always return non-nil."
   t)
 
 (defun verilog-ts--matcher-ansi-port-after-paren (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if the first ansi-port is in the same line as the opening
 parenthesis."
   (let* ((indent-node (verilog-ts--node-has-parent-recursive node "list_of_port_declarations"))
@@ -998,7 +998,7 @@ parenthesis."
     (eq indent-node-line first-port-node-line)))
 
 (defun verilog-ts--matcher-parameter-port-after-paren (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if the first parameter is in the same line as the opening
 parenthesis."
   (let* ((indent-node (verilog-ts--node-has-parent-recursive node "parameter_port_list"))
@@ -1008,7 +1008,7 @@ parenthesis."
     (eq indent-node-line first-port-node-line)))
 
 (defun verilog-ts--matcher-continued-parameter-port (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if matches continued declaration of parameter ports.
 parameter A = 0,
           B = 1,
@@ -1017,7 +1017,7 @@ parameter A = 0,
     (string= (treesit-node-type child-node) "data_type")))
 
 (defun verilog-ts--matcher-unpacked-array-same-line (_node parent &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for PARENT.
 Return non-nil if the first unpacked array element is in the same line as the
 opening brace."
   (let* ((indent-node-line (line-number-at-pos (treesit-node-start parent)))
@@ -1026,7 +1026,7 @@ opening brace."
     (eq indent-node-line first-elm-node-line)))
 
 (defun verilog-ts--matcher-import-package-ansi-header (node parent &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE and PARENT.
 Return non-nil if matches import package on ANSI header:
    module foo
        import bar_pkg::*;
@@ -1044,48 +1044,44 @@ Return non-nil if matches import package on ANSI header:
              (string= parent-node-type "module_ansi_header")))))
 
 (defun verilog-ts--matcher-expression-args (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if matches continued declaration of list of arguments.
 
     ret_value = funcall(a, b, c,
-                        d, e, f);
-"
+                        d, e, f);"
   (when (and node (string-match "expression" (treesit-node-type node)))
     (verilog-ts--node-has-parent-recursive node "\\(list_of\\(_actual\\)?_arguments\\|cond_predicate\\|concatenation\\)")))
 
 (defun verilog-ts--matcher-expression-decl (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if matches continued declaration of list of net or variable
 declaration:
 
     wire [1:0] mux_output0 =
                    select0[0] ? mux_input0 :
                    select0[1] ? mux_input1 :
-                   mux_input2;
-"
+                   mux_input2;"
   (when (and node (string-match "expression" (treesit-node-type node)))
     (verilog-ts--node-has-parent-recursive node "list_of_\\(net\\|variable\\)_decl_assignments")))
 
 (defun verilog-ts--matcher-expression-loop (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if matches continued expression of a loop statement condition.
 
     while (a && b &&
-           !c) begin
-"
+           !c) begin"
   (when (and node (string-match "expression" (treesit-node-type node)))
     (let ((loop-node (verilog-ts--node-has-parent-recursive node "loop_statement")))
       (and loop-node
            (string= (treesit-node-type (treesit-node-child loop-node 2)) "expression"))))) ; 2 accounts for while (
 
 (defun verilog-ts--matcher-expression-assignment (node &rest _)
-  "A tree-sitter simple indent matcher.
+  "A tree-sitter simple indent matcher for NODE.
 Return non-nil if matches continued expression of a loop statement condition.
 
     valid_c <= (valid &&
                 (state != A) &&
-                (state != B));
-"
+                (state != B));"
   (and node ; prevent matching blank lines and continued quoted strings
        (string-match "expression" (treesit-node-type node)) ; also match mintypmax and constant expressions
        (verilog-ts--node-has-parent-recursive node "\\(continuous_assign\\|\\(non\\)?blocking_assignment\\)")
@@ -1284,7 +1280,7 @@ Indent package imports on ANSI headers, used in conjunction with
       (1+ (point))))) ; Take " into account
 
 (defun verilog-ts--anchor-assignment-pattern (_node parent &rest _)
-  "A tree-sitter simple indent anchor.
+  "A tree-sitter simple indent matcher for PARENT.
  - int a = '{0, 1, 2,
     -> Will indent the rest of the elements right below the first one.
  - int a = '{
