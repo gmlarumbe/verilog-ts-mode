@@ -6,7 +6,7 @@
 ;; URL: https://github.com/gmlarumbe/verilog-ts-mode
 ;; Version: 0.2.1
 ;; Keywords: Verilog, IDE, Tools
-;; Package-Requires: ((emacs "29.1"))
+;; Package-Requires: ((emacs "29.1") (verilog-mode "2024.3.1.121933719"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -76,8 +76,6 @@ Defaults to .v, .vh, .sv and .svh."
 
 ;;; Utils
 ;;;; Core
-(defconst verilog-ts-identifier-re "[a-zA-Z_][a-zA-Z_0-9]*")
-(defconst verilog-ts-identifier-sym-re (concat "\\_<" verilog-ts-identifier-re "\\_>"))
 (defconst verilog-ts-instance-re "\\_<\\(module\\|interface\\|program\\|gate\\|udp\\|checker\\)_instantiation\\_>")
 (defconst verilog-ts-port-header-ts-re "\\_<\\(variable\\|net\\|interface\\)_port_header\\_>")
 
@@ -162,9 +160,10 @@ If none is found, return nil."
   (let ((type (treesit-node-type node)))
     (cond (;; Variables
            (string-match "\\_<variable_decl_assignment\\_>" type)
-           (treesit-node-text (verilog-ts--node-has-child-recursive (verilog-ts--node-has-parent-recursive node "\\_<data_declaration\\_>") "\\_<data_type\\_>") :no-prop))
-          ;; TODO: Still not taking (random_qualifier) sibling of (data_type) into account for rand/randc attributes
-          ;; TODO: Still not taking unpacked/queue/array dimensions into account
+           (let* ((start-node (or (verilog-ts--node-has-parent-recursive node "\\_<class_property\\_>") ; Place it before to get qualifiers in case it's a property
+                                  (verilog-ts--node-has-parent-recursive node "\\_<data_declaration\\_>")))
+                  (end-node (treesit-search-subtree start-node "\\_<variable_decl_assignment\\_>"))) ; Get first declaration of a list of variables to make it more generic
+             (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))))
           (;; Nets
            (string-match "\\_<net_decl_assignment\\_>" type)
            (treesit-node-text (verilog-ts--node-has-child-recursive (verilog-ts--node-has-parent-recursive node "\\_<net_declaration\\_>") "\\_<\\(net_type\\|simple_identifier\\)\\_>") :no-prop))
@@ -255,13 +254,14 @@ and end position."
   "Return non-nil if point is inside a module or interface construct."
   (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\_<\\(module\\|interface\\)_declaration\\_>"))
 
-(defun verilog-ts--node-is-typedef-class-p (node)
-  "Return non-nil if NODE is a typedef class declaration."
+(defun verilog-ts--node-is-typedef-class (node)
+  "Return declared class name if NODE is a typedef class declaration."
   (let ((type (treesit-node-type node)))
-    (and node
-         (string-match "\\_<type_declaration\\_>" type)
-         (string-match (concat "typedef\\s-+class\\s-+" verilog-ts-identifier-re "\\s-*;")
-                       (treesit-node-text node :no-prop)))))
+    (when (and node
+               (string-match "\\_<type_declaration\\_>" type)
+               (string= (treesit-node-text (treesit-node-child node 0) :no-prop) "typedef")
+               (string= (treesit-node-text (treesit-node-child node 1) :no-prop) "class"))
+      (treesit-node-text (treesit-node-child-by-field-name node "type_name") :no-prop))))
 
 ;;;; Context
 (defconst verilog-ts-block-at-point-re
@@ -628,7 +628,7 @@ obj.method();"
 
 
 ;;;; Treesit-settings
-(defvar verilog-ts--treesit-settings
+(defvar verilog-ts--font-lock-settings
   (treesit-font-lock-rules
    :feature 'comment
    :language 'verilog
@@ -941,7 +941,7 @@ Matches if point is at a continued quoted string."
 
 (defun verilog-ts--matcher-uvm-field-macro (&rest _)
   "A tree-sitter simple indent matcher.
-Matches if point is at uvm_field_* macro.
+Matches if point is at a uvm_field_* macro.
 Snippet fetched from `treesit--indent-1'."
   (let* ((bol (save-excursion
                 (forward-line 0)
@@ -952,7 +952,7 @@ Snippet fetched from `treesit--indent-1'."
          (node-text (when node
                       (treesit-node-text node :no-props))))
     (when (and node-text
-               (or (eq 0 (string-match "`[ou]vm_field_" node-text))))
+               (eq 0 (string-match "`[ou]vm_field_" node-text)))
       node-text)))
 
 (defun verilog-ts--matcher-default-indent (&rest _)
@@ -1024,10 +1024,7 @@ Return non-nil if matches continued declaration of list of arguments.
                         d, e, f);
 "
   (when (and node (string-match "expression" (treesit-node-type node)))
-    ;; TODO: Place them in the proper order? Maybe create compound RE?
-    (or (verilog-ts--node-has-parent-recursive node "list_of\\(_actual\\)?_arguments")
-        (verilog-ts--node-has-parent-recursive node "cond_predicate")
-        (verilog-ts--node-has-parent-recursive node "concatenation"))))
+    (verilog-ts--node-has-parent-recursive node "\\(list_of\\(_actual\\)?_arguments\\|cond_predicate\\|concatenation\\)")))
 
 (defun verilog-ts--matcher-expression-decl (node &rest _)
   "A tree-sitter simple indent matcher.
@@ -1075,12 +1072,11 @@ Handle indentation of block end keywords."
   (save-excursion
     (pcase (treesit-node-text node :no-props)
       ("endtask"
-       (goto-char (treesit-node-start (or (verilog-ts--node-has-parent-recursive node "class_method")
-                                          (verilog-ts--node-has-parent-recursive node "task_declaration")))))
+       (goto-char (treesit-node-start (or (verilog-ts--node-has-parent-recursive node "class_method") ; First check if it's a class method to align to modifiers ...
+                                          (verilog-ts--node-has-parent-recursive node "task_declaration"))))) ; ... e.g: protected/static/etc...
       ("endfunction"
        (goto-char (treesit-node-start (or (verilog-ts--node-has-parent-recursive node "class_method")
-                                          (verilog-ts--node-has-parent-recursive node "function_declaration")
-                                          (verilog-ts--node-has-parent-recursive node "class_constructor_declaration")))))
+                                          (verilog-ts--node-has-parent-recursive node "\\(function\\|class_constructor\\)_declaration")))))
       ;; default is parent-bol 0
       (_
        (goto-char (treesit-node-start parent))
@@ -1091,10 +1087,7 @@ Handle indentation of block end keywords."
   "A tree-sitter simple indent anchor for NODE and PARENT."
   (let (indent-node)
     (save-excursion
-      (cond ((setq indent-node (verilog-ts--node-has-parent-recursive node "list_of\\(_actual\\)?_arguments"))
-             (goto-char (treesit-node-start indent-node))
-             (point))
-            ((setq indent-node (verilog-ts--node-has-parent-recursive node "cond_predicate"))
+      (cond ((setq indent-node (verilog-ts--node-has-parent-recursive node "\\(list_of\\(_actual\\)?_arguments\\|cond_predicate\\)"))
              (goto-char (treesit-node-start indent-node))
              (point))
             ((setq indent-node (verilog-ts--node-has-parent-recursive node "concatenation"))
@@ -1142,14 +1135,6 @@ Handle indentation of block end keywords."
              (goto-char (treesit-node-start first-node))
              (point))))))
 
-(defun verilog-ts--anchor-grandparent (_node parent &rest _)
-  "A tree-sitter simple indent anchor for NODE and PARENT.
-Find the beginning of node's grandparent.
-INFO: Might be present in future Emacs releases.
-Check `treesit' and `treesit-simple-indent-presets'."
-  (save-excursion
-    (goto-char (treesit-node-start (treesit-node-parent parent)))))
-
 (defun verilog-ts--anchor-grandparent-bol (_node parent &rest _)
   "A tree-sitter simple indent anchor for NODE and PARENT.
 Find the beginning of line of node's grandparent.
@@ -1163,9 +1148,8 @@ Check `treesit' and `treesit-simple-indent-presets'."
 (defun verilog-ts--anchor-tf-port-list (node &rest _)
   "A tree-sitter simple indent anchor for NODE.
 Indent task/function arguments."
-  (let ((indent-node (or (verilog-ts--node-has-parent-recursive node "class_method")
-                         (verilog-ts--node-has-parent-recursive node "task_declaration")
-                         (verilog-ts--node-has-parent-recursive node "function_declaration"))))
+  (let ((indent-node (or (verilog-ts--node-has-parent-recursive node "class_method") ; First check if it's a class method to align to modifiers ...
+                         (verilog-ts--node-has-parent-recursive node "\\(task\\|function\\)_declaration"))))
     (save-excursion
       (if indent-node
           (goto-char (treesit-node-start indent-node))
@@ -1174,8 +1158,7 @@ Indent task/function arguments."
 (defun verilog-ts--anchor-tf-port-item (node &rest _)
   "A tree-sitter simple indent anchor for NODE.
 Indent task/function arguments."
-  (let ((indent-node (or (verilog-ts--node-has-parent-recursive node "tf_port_list")
-                         (verilog-ts--node-has-parent-recursive node "class_constructor_arg_list"))))
+  (let ((indent-node (verilog-ts--node-has-parent-recursive node "\\(tf_port\\|class_constructor_arg\\)_list")))
     (save-excursion
       (if indent-node
           (goto-char (treesit-node-start indent-node))
@@ -1287,8 +1270,25 @@ Indent package imports on ANSI headers, used in conjunction with
 
 
 ;;;; Rules
-;; INFO: Do not use siblings as anchors, since comments could be wrongly detected as siblings!
-(defvar verilog-ts--indent-rules
+(defconst verilog-ts--indent-procedural
+  (eval-when-compile
+    (regexp-opt
+     '("continuous_assign"
+       "always_construct"
+       "if_generate_construct"
+       "loop_generate_construct"
+       "initial_construct"
+       "statement_or_null"
+       "case_item"
+       "block_item_declaration"               ; Procedural local variables declaration
+       "tf_item_declaration"                  ; Procedural local variables in tasks declaration
+       "function_statement_or_null"           ; Procedural statement in a function
+       "checker_or_generate_item_declaration" ; default disable iff (!rst_ni);
+       "concurrent_assertion_item"            ; default disable iff (!rst_ni);
+       "super")
+     'symbols)))
+
+(defvar verilog-ts--treesit-indent-rules
   `((verilog
      ;; Unit scope
      (verilog-ts--matcher-unit-scope verilog-ts--anchor-point-min 0) ; Place first for highest precedence
@@ -1297,37 +1297,19 @@ Indent package imports on ANSI headers, used in conjunction with
            verilog-ts--matcher-unit-scope)
       verilog-ts--anchor-point-min 0)
      ((and (node-is "comment")
-           (or (parent-is "conditional_statement")
-               (parent-is "list_of_port_connections")))
+           (parent-is "\\(conditional_statement\\|list_of_port_connections\\)"))
       parent-bol 0)
      ((and (node-is "comment")
            (parent-is "list_of_port_declarations"))
       verilog-ts--anchor-grandparent-bol verilog-ts-indent-level)
      ((node-is "comment") parent-bol verilog-ts-indent-level)
      ;; Procedural
-     ((node-is "continuous_assign") parent-bol verilog-ts-indent-level)
-     ((node-is "always_construct") parent-bol verilog-ts-indent-level)
-     ((node-is "if_generate_construct") parent-bol verilog-ts-indent-level)
-     ((node-is "loop_generate_construct") parent-bol verilog-ts-indent-level)
-     ((node-is "initial_construct") parent-bol verilog-ts-indent-level)
-     ((node-is "statement_or_null") parent-bol verilog-ts-indent-level)
-     ((node-is "case_item") parent-bol verilog-ts-indent-level)
-     ((node-is "block_item_declaration") parent-bol verilog-ts-indent-level)     ; Procedural local variables declaration
-     ((node-is "tf_item_declaration") parent-bol verilog-ts-indent-level)        ; Procedural local variables in tasks declaration
-     ((node-is "function_statement_or_null") parent-bol verilog-ts-indent-level) ; Procedural statement in a function
-     ((node-is "checker_or_generate_item_declaration") parent-bol verilog-ts-indent-level) ; default disable iff (!rst_ni);
-     ((node-is "concurrent_assertion_item") parent-bol verilog-ts-indent-level) ; default disable iff (!rst_ni);
-     ((node-is "super") parent-bol verilog-ts-indent-level)
+     ((node-is ,verilog-ts--indent-procedural) parent-bol verilog-ts-indent-level)
      ;; ANSI Port/parameter declaration
-     ((node-is "parameter_port_list") parent-bol 0) ; Open parenthesis in new line (old verilog-mode style)
-     ((node-is "list_of_port_declarations") parent-bol verilog-ts-indent-level) ; Open parenthesis in new line (old verilog-mode style)
      ((and (node-is "ansi_port_declaration")
            verilog-ts--matcher-ansi-port-after-paren)
       verilog-ts--anchor-first-ansi-port 0)
-     ((node-is "ansi_port_declaration") verilog-ts--anchor-ansi-port verilog-ts-indent-level) ; Fallback of previous rule
-     ((node-is "module_or_generate_item") parent-bol verilog-ts-indent-level)
-     ((node-is "interface_or_generate_item") parent-bol verilog-ts-indent-level)
-     ((node-is "list_of_param_assignments") parent-bol verilog-ts-indent-level) ; First instance parameter (without parameter keyword)
+     ((node-is "ansi_port_declaration") verilog-ts--anchor-ansi-port verilog-ts-indent-level) ; Previous rule fallback
      ((and (node-is "parameter_port_declaration")
            verilog-ts--matcher-continued-parameter-port)
       verilog-ts--anchor-continued-parameter 0)
@@ -1335,33 +1317,24 @@ Indent package imports on ANSI headers, used in conjunction with
            verilog-ts--matcher-parameter-port-after-paren)
       verilog-ts--anchor-parameter-port 0)
      ((node-is "parameter_port_declaration") parent-bol verilog-ts-indent-level) ; First instance parameter (without parameter keyword)
-     ;; import packages
+     ((node-is "parameter_port_list") parent-bol 0) ; Open parenthesis in new line (old verilog-mode style)
+     ((node-is "list_of_\\(port_declarations\\|param_assignments\\)") parent-bol verilog-ts-indent-level) ; Open parenthesis in newline/level, first instance parameter wo/ parameter keyword (old verilog-mode style)
+     ((node-is "\\(module\\|interface\\)_or_generate_item") parent-bol verilog-ts-indent-level)
+     ;; Import packages
      (verilog-ts--matcher-import-package-ansi-header verilog-ts--anchor-import-package-ansi-header verilog-ts-indent-level)
      ((node-is "package_import_declaration") parent-bol verilog-ts-indent-level)
      ((and (node-is "package_or_generate_item_declaration")
            (parent-is "package_declaration"))
       parent-bol verilog-ts-indent-level)
      ;; Instance port/parameters
-     ((node-is "named_port_connection") parent-bol 0)
-     ((node-is "ordered_port_connection") parent-bol 0)
-     ((node-is "named_parameter_assignment") parent-bol 0)
-     ((node-is "ordered_parameter_assignment") parent-bol 0)
+     ((node-is "\\(named\\|ordered\\)_port_connection") parent-bol 0)
+     ((node-is "\\(named\\|ordered\\)_parameter_assignment") parent-bol 0)
      ((and (node-is ".")
            (parent-is "named_port_connection")) ; E.g. ports with `ifdefs
       verilog-ts--anchor-grandparent-bol 0)
-     ;; Block end
+     ;; Enclosing
      ((node-is "end") verilog-ts--anchor-end-indent 0)
-     ;; Closing
-     ((or (node-is "else")         ; Parent is 'if
-          (node-is "join_keyword") ; Parent is 'fork
-          (node-is "}")
-          (node-is ")")
-          (node-is "]"))
-      parent-bol 0)
-     ;; Opening.
-     ((or (node-is "{")
-          (node-is "("))
-      parent-bol 0)
+     ((node-is "\\(else\\|join_keyword\\|{\\|}\\|(\\|)\\|]\\)") parent-bol 0)
      ;; Macros
      ((and (node-is "class_item") ; Place before (node-is "class_item") to match with higher precedence
            verilog-ts--matcher-uvm-field-macro)
@@ -1372,19 +1345,13 @@ Indent package imports on ANSI headers, used in conjunction with
      ((or (node-is "timeunit")
           (node-is "timeprecision"))
       parent 0)
-     ((node-is "tf_port_list") verilog-ts--anchor-tf-port-list verilog-ts-indent-level) ; Task ports in multiple lines (first line)
-     ((node-is "tf_port_item") verilog-ts--anchor-tf-port-item 0) ; Task ports in multiple lines
-     ((node-is "class_constructor_arg_list") verilog-ts--anchor-tf-port-list verilog-ts-indent-level) ; INFO: Similar to "tf_port_list"
-     ((node-is "class_constructor_arg") verilog-ts--anchor-tf-port-item 0) ; INFO: Similar to  "tf_port_item"
-     ((node-is "constraint_block_item") parent-bol verilog-ts-indent-level)
-     ((node-is "enum_name_declaration") parent-bol verilog-ts-indent-level)
-     ((node-is "generate_region") parent-bol verilog-ts-indent-level)
+     ((node-is "\\(class_constructor_arg\\|tf_port\\)_list") verilog-ts--anchor-tf-port-list verilog-ts-indent-level) ; Task ports in multiple lines (first line)
+     ((node-is "\\(tf_port_item\\|class_constructor_arg\\)") verilog-ts--anchor-tf-port-item 0) ; Task ports in multiple lines
+     ((node-is "\\(constraint_block_item\\|enum_name_declaration\\|generate_region\\|constraint_expression\\|dist_list\\)") parent-bol verilog-ts-indent-level)
      ((node-is "hierarchical_instance") parent-bol 0) ; Instance name in separate line
-     ((node-is "constraint_expression") parent-bol verilog-ts-indent-level) ; Instance name in separate line
-     ((node-is "bins_or_options") verilog-ts--anchor-coverpoint-bins verilog-ts-indent-level) ; Instance name in separate line
-     ((node-is "cross_body_item") verilog-ts--anchor-cross-bins verilog-ts-indent-level) ; Instance name in separate line
-     ((node-is "dist_list") parent-bol verilog-ts-indent-level) ; Instance name in separate line
-     ((node-is "dist_item") verilog-ts--anchor-grandparent-bol verilog-ts-indent-level) ; Instance name in separate line
+     ((node-is "bins_or_options") verilog-ts--anchor-coverpoint-bins verilog-ts-indent-level)
+     ((node-is "cross_body_item") verilog-ts--anchor-cross-bins verilog-ts-indent-level)
+     ((node-is "dist_item") verilog-ts--anchor-grandparent-bol verilog-ts-indent-level)
      ((and (parent-is "assignment_pattern")
            verilog-ts--matcher-unpacked-array-same-line)
       verilog-ts--anchor-assignment-pattern 0)
@@ -1396,9 +1363,8 @@ Indent package imports on ANSI headers, used in conjunction with
      (verilog-ts--matcher-expression-assignment verilog-ts--anchor-expression-assignment 0) ; expression 4
      ((node-is "expression") parent-bol verilog-ts-indent-level) ; expression generic
      ((node-is "constant_expression") parent-bol 0)
-     ((node-is "variable_decl_assignment") parent 0)
-     ((node-is "param_assignment") parent 0)
      ((node-is "module_ansi_header") parent-bol 0) ; Opening bracket of module ports/parmeters
+     ((node-is "\\(param\\|variable_decl\\)_assignment") parent 0)
      ;; Arguments
      ((node-is "actual_argument") parent 0)
      ;; Blank lines and continued strings
@@ -2059,11 +2025,11 @@ and the linker to be installed and on PATH."
                   (keyword operator)
                   (preprocessor punctuation type declaration instance number array system-tf misc)
                   (error)))
-    (setq-local treesit-font-lock-settings verilog-ts--treesit-settings)
+    (setq-local treesit-font-lock-settings verilog-ts--font-lock-settings)
     ;; Indent.
     (setq-local indent-line-function nil)
     (setq-local comment-indent-function nil)
-    (setq-local treesit-simple-indent-rules verilog-ts--indent-rules)
+    (setq-local treesit-simple-indent-rules verilog-ts--treesit-indent-rules)
     ;; Navigation.
     (setq-local treesit-defun-type-regexp verilog-ts--defun-type-regexp)
     ;; Imenu.

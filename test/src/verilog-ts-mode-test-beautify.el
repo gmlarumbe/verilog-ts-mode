@@ -47,7 +47,7 @@
 
 (defun verilog-ts-mode-test-beautify-file ()
   (verilog-ts-mode)
-  (let ((beautify-re (concat "\\(?1:^\\s-*\\." verilog-ts-identifier-re "\\)\\(?2:\\s-*\\)(")))
+  (let ((beautify-re (concat "\\(?1:^\\s-*\\." verilog-identifier-re "\\)\\(?2:\\s-*\\)(")))
     ;; Clean blanks in ports (similar to `verilog-ext-replace-regexp-whole-buffer')
     (save-excursion
       (goto-char (point-min))
