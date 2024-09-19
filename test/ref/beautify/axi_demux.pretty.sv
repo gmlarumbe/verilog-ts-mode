@@ -38,39 +38,39 @@
 /// Beats on the B and R channel are multiplexed from the master ports to the slave port with
 /// a round-robin arbitration tree.
 module axi_demux #(
-  parameter int unsigned AxiIdWidth     = 32'd0,
-  parameter bit          AtopSupport    = 1'b1,
-  parameter type         aw_chan_t      = logic,
-  parameter type         w_chan_t       = logic,
-  parameter type         b_chan_t       = logic,
-  parameter type         ar_chan_t      = logic,
-  parameter type         r_chan_t       = logic,
-  parameter type         axi_req_t      = logic,
-  parameter type         axi_resp_t     = logic,
-  parameter int unsigned NoMstPorts     = 32'd0,
-  parameter int unsigned MaxTrans       = 32'd8,
-  parameter int unsigned AxiLookBits    = 32'd3,
-  parameter bit          UniqueIds      = 1'b0,
-  parameter bit          SpillAw        = 1'b1,
-  parameter bit          SpillW         = 1'b0,
-  parameter bit          SpillB         = 1'b0,
-  parameter bit          SpillAr        = 1'b1,
-  parameter bit          SpillR         = 1'b0,
+  parameter int unsigned AxiIdWidth  = 32'd0,
+  parameter bit 	 AtopSupport = 1'b1,
+  parameter type 	 aw_chan_t   = logic,
+  parameter type 	 w_chan_t    = logic,
+  parameter type 	 b_chan_t    = logic,
+  parameter type 	 ar_chan_t   = logic,
+  parameter type 	 r_chan_t    = logic,
+  parameter type 	 axi_req_t   = logic,
+  parameter type 	 axi_resp_t  = logic,
+  parameter int unsigned NoMstPorts  = 32'd0,
+  parameter int unsigned MaxTrans    = 32'd8,
+  parameter int unsigned AxiLookBits = 32'd3,
+  parameter bit 	 UniqueIds   = 1'b0,
+  parameter bit 	 SpillAw     = 1'b1,
+  parameter bit 	 SpillW      = 1'b0,
+  parameter bit 	 SpillB      = 1'b0,
+  parameter bit 	 SpillAr     = 1'b1,
+  parameter bit 	 SpillR      = 1'b0,
   // Dependent parameters, DO NOT OVERRIDE!
-  parameter int unsigned SelectWidth    = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
-  parameter type         select_t       = logic [SelectWidth-1:0]
+  parameter int unsigned SelectWidth = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1,
+  parameter type 	 select_t    = logic [SelectWidth-1:0]
 ) (
-  input  logic                          clk_i,
-  input  logic                          rst_ni,
-  input  logic                          test_i,
+  input  logic 			       clk_i,
+  input  logic 			       rst_ni,
+  input  logic 			       test_i,
   // Slave Port
-  input  axi_req_t                      slv_req_i,
-  input  select_t                       slv_aw_select_i,
-  input  select_t                       slv_ar_select_i,
-  output axi_resp_t                     slv_resp_o,
+  input  axi_req_t 		       slv_req_i,
+  input  select_t 		       slv_aw_select_i,
+  input  select_t 		       slv_ar_select_i,
+  output axi_resp_t 		       slv_resp_o,
   // Master Ports
-  output axi_req_t    [NoMstPorts-1:0]  mst_reqs_o,
-  input  axi_resp_t   [NoMstPorts-1:0]  mst_resps_i
+  output axi_req_t    [NoMstPorts-1:0] mst_reqs_o,
+  input  axi_resp_t   [NoMstPorts-1:0] mst_resps_i
 );
 
   localparam int unsigned IdCounterWidth = cf_math_pkg::idx_width(MaxTrans);
@@ -253,27 +253,27 @@ module axi_demux #(
       .data_o  ( slv_aw_select      )
     );
     assign slv_resp_o.aw_ready = slv_aw_ready_chan & slv_aw_ready_sel;
-    assign slv_aw_valid = slv_aw_valid_chan & slv_aw_valid_sel;
+    assign slv_aw_valid        = slv_aw_valid_chan & slv_aw_valid_sel;
 
     // Control of the AW handshake
     always_comb begin
       // AXI Handshakes
-      slv_aw_ready 	      = 1'b0;
-      aw_valid 		      = 1'b0;
+      slv_aw_ready    = 1'b0;
+      aw_valid 	      = 1'b0;
       // `lock_aw_valid`, used to be protocol conform as it is not allowed to deassert
       // a valid if there was no corresponding ready. As this process has to be able to inject
       // an AXI ID into the counter of the AR channel on an ATOP, there could be a case where
       // this process waits on `aw_ready` but in the mean time on the AR channel the counter gets
       // full.
-      lock_aw_valid_d 	      = lock_aw_valid_q;
-      load_aw_lock 	      = 1'b0;
+      lock_aw_valid_d = lock_aw_valid_q;
+      load_aw_lock    = 1'b0;
       // AW ID counter and W FIFO
-      w_cnt_up 		      = 1'b0;
+      w_cnt_up 	      = 1'b0;
       // ATOP injection into ar counter
-      atop_inject 	      = 1'b0;
+      atop_inject     = 1'b0;
       // we had an arbitration decision, the valid is locked, wait for the transaction
       if (lock_aw_valid_q) begin
-        aw_valid 	  = 1'b1;
+        aw_valid = 1'b1;
         // transaction
         if (aw_ready) begin
           slv_aw_ready 	  = 1'b1;
@@ -297,9 +297,9 @@ module axi_demux #(
                 ((w_open == '0) || (w_select == slv_aw_select)) &&
                 (!aw_select_occupied || (slv_aw_select == lookup_aw_select))) begin
             // connect the handshake
-            aw_valid 	      = 1'b1;
+            aw_valid = 1'b1;
             // push arbitration to the W FIFO regardless, do not wait for the AW transaction
-            w_cnt_up 	      = 1'b1;
+            w_cnt_up = 1'b1;
             // on AW transaction
             if (aw_ready) begin
               slv_aw_ready = 1'b1;
@@ -324,9 +324,9 @@ module axi_demux #(
       // master port as all write transactions with the same ID, or both.  This means that the
       // signals that are driven by the ID counters if this parameter is not set can instead be
       // derived from existing signals.  The ID counters can therefore be omitted.
-      assign lookup_aw_select = slv_aw_select;
+      assign lookup_aw_select 	= slv_aw_select;
       assign aw_select_occupied = 1'b0;
-      assign aw_id_cnt_full = 1'b0;
+      assign aw_id_cnt_full 	= 1'b0;
     end else begin : gen_aw_id_counter
       axi_demux_id_counters #(
         .AxiIdBits         ( AxiLookBits    ),
@@ -370,7 +370,7 @@ module axi_demux #(
     );
 
     `FFLARN(w_select_q, slv_aw_select, w_cnt_up, select_t'(0), clk_i, rst_ni)
-    assign w_select       = (|w_open) ? w_select_q : slv_aw_select;
+    assign w_select 	  = (|w_open) ? w_select_q : slv_aw_select;
     assign w_select_valid = w_cnt_up | (|w_open);
 
     //--------------------------------------
@@ -431,8 +431,8 @@ module axi_demux #(
     //--------------------------------------
     //  AR Channel
     //--------------------------------------
-    ar_chan_t 		      slv_ar_chan;
-    select_t 		      slv_ar_select;
+    ar_chan_t slv_ar_chan;
+    select_t  slv_ar_select;
     spill_register #(
       .T       ( ar_chan_t          ),
       .Bypass  ( ~SpillAr           )
@@ -460,25 +460,25 @@ module axi_demux #(
       .data_o  ( slv_ar_select      )
     );
     assign slv_resp_o.ar_ready = slv_ar_ready_chan & slv_ar_ready_sel;
-    assign slv_ar_valid = ar_valid_chan & ar_valid_sel;
+    assign slv_ar_valid        = ar_valid_chan & ar_valid_sel;
 
     // control of the AR handshake
     always_comb begin
       // AXI Handshakes
-      slv_ar_ready 	      = 1'b0;
-      ar_valid 		      = 1'b0;
+      slv_ar_ready    = 1'b0;
+      ar_valid 	      = 1'b0;
       // `lock_ar_valid`: Used to be protocol conform as it is not allowed to deassert `ar_valid`
       // if there was no corresponding `ar_ready`. There is the possibility that an injection
       // of a R response from an `atop` from the AW channel can change the occupied flag of the
       // `i_ar_id_counter`, even if it was previously empty. This FF prevents the deassertion.
-      lock_ar_valid_d 	      = lock_ar_valid_q;
-      load_ar_lock 	      = 1'b0;
+      lock_ar_valid_d = lock_ar_valid_q;
+      load_ar_lock    = 1'b0;
       // AR id counter
-      ar_push 		      = 1'b0;
+      ar_push 	      = 1'b0;
       // The process had an arbitration decision in a previous cycle, the valid is locked,
       // wait for the AR transaction.
       if (lock_ar_valid_q) begin
-        ar_valid 	  = 1'b1;
+        ar_valid = 1'b1;
         // transaction
         if (ar_ready) begin
           slv_ar_ready 	  = 1'b1;
@@ -493,7 +493,7 @@ module axi_demux #(
           if (slv_ar_valid && (!ar_select_occupied ||
              (slv_ar_select == lookup_ar_select))) begin
             // connect the AR handshake
-            ar_valid 	      = 1'b1;
+            ar_valid = 1'b1;
             // on transaction
             if (ar_ready) begin
               slv_ar_ready = 1'b1;
@@ -517,9 +517,9 @@ module axi_demux #(
       // master port as all read transactions with the same ID, or both.  This means that the
       // signals that are driven by the ID counters if this parameter is not set can instead be
       // derived from existing signals.  The ID counters can therefore be omitted.
-      assign lookup_ar_select = slv_ar_select;
+      assign lookup_ar_select 	= slv_ar_select;
       assign ar_select_occupied = 1'b0;
-      assign ar_id_cnt_full = 1'b0;
+      assign ar_id_cnt_full 	= 1'b0;
     end else begin : gen_ar_id_counter
       axi_demux_id_counters #(
         .AxiIdBits         ( AxiLookBits    ),
@@ -587,47 +587,47 @@ module axi_demux #(
     // as mst_reqs_o has to be drivem from the same always comb block!
     always_comb begin
       // default assignments
-      mst_reqs_o 		 = '0;
-      slv_w_ready 		 = 1'b0;
-      w_cnt_down 		 = 1'b0;
+      mst_reqs_o  = '0;
+      slv_w_ready = 1'b0;
+      w_cnt_down  = 1'b0;
 
       for (int unsigned i = 0; i < NoMstPorts; i++) begin
         // AW channel
-        mst_reqs_o[i].aw 	 = slv_aw_chan;
-        mst_reqs_o[i].aw_valid 	 = 1'b0;
+        mst_reqs_o[i].aw       = slv_aw_chan;
+        mst_reqs_o[i].aw_valid = 1'b0;
         if (aw_valid && (slv_aw_select == i)) begin
           mst_reqs_o[i].aw_valid = 1'b1;
         end
 
         //  W channel
-        mst_reqs_o[i].w 	 = slv_w_chan;
-        mst_reqs_o[i].w_valid 	 = 1'b0;
+        mst_reqs_o[i].w       = slv_w_chan;
+        mst_reqs_o[i].w_valid = 1'b0;
         if (w_select_valid && (w_select == i)) begin
-          mst_reqs_o[i].w_valid  = slv_w_valid;
-          slv_w_ready 		 = mst_resps_i[i].w_ready;
-          w_cnt_down 		 = slv_w_valid & mst_resps_i[i].w_ready & slv_w_chan.last;
+          mst_reqs_o[i].w_valid = slv_w_valid;
+          slv_w_ready 		= mst_resps_i[i].w_ready;
+          w_cnt_down 		= slv_w_valid & mst_resps_i[i].w_ready & slv_w_chan.last;
         end
 
         //  B channel
-        mst_reqs_o[i].b_ready 	 = mst_b_readies[i];
+        mst_reqs_o[i].b_ready  = mst_b_readies[i];
 
         // AR channel
-        mst_reqs_o[i].ar 	 = slv_ar_chan;
-        mst_reqs_o[i].ar_valid 	 = 1'b0;
+        mst_reqs_o[i].ar       = slv_ar_chan;
+        mst_reqs_o[i].ar_valid = 1'b0;
         if (ar_valid && (slv_ar_select == i)) begin
           mst_reqs_o[i].ar_valid = 1'b1;
         end
 
         //  R channel
-        mst_reqs_o[i].r_ready 	 = mst_r_readies[i];
+        mst_reqs_o[i].r_ready = mst_r_readies[i];
       end
     end
     // unpack the response B and R channels for the arbitration
     for (genvar i = 0; i < NoMstPorts; i++) begin : gen_b_channels
-      assign mst_b_chans[i]        = mst_resps_i[i].b;
-      assign mst_b_valids[i]       = mst_resps_i[i].b_valid;
-      assign mst_r_chans[i]        = mst_resps_i[i].r;
-      assign mst_r_valids[i]       = mst_resps_i[i].r_valid;
+      assign mst_b_chans[i]  = mst_resps_i[i].b;
+      assign mst_b_valids[i] = mst_resps_i[i].b_valid;
+      assign mst_r_chans[i]  = mst_resps_i[i].r;
+      assign mst_r_valids[i] = mst_resps_i[i].r_valid;
     end
 
 
@@ -685,27 +685,27 @@ endmodule
 
 module axi_demux_id_counters #(
   // the lower bits of the AXI ID that should be considered, results in 2**AXI_ID_BITS counters
-  parameter int unsigned AxiIdBits         = 2,
-  parameter int unsigned CounterWidth      = 4,
-  parameter type         mst_port_select_t = logic
+  parameter int unsigned AxiIdBits 	   = 2,
+  parameter int unsigned CounterWidth 	   = 4,
+  parameter type 	 mst_port_select_t = logic
 ) (
-  input                        clk_i,   // Clock
-  input                        rst_ni,  // Asynchronous reset active low
+  input 		       clk_i,  // Clock
+  input 		       rst_ni, // Asynchronous reset active low
   // lookup
   input  logic [AxiIdBits-1:0] lookup_axi_id_i,
   output mst_port_select_t     lookup_mst_select_o,
-  output logic                 lookup_mst_select_occupied_o,
+  output logic 		       lookup_mst_select_occupied_o,
   // push
-  output logic                 full_o,
+  output logic 		       full_o,
   input  logic [AxiIdBits-1:0] push_axi_id_i,
   input  mst_port_select_t     push_mst_select_i,
-  input  logic                 push_i,
+  input  logic 		       push_i,
   // inject ATOPs in AR channel
   input  logic [AxiIdBits-1:0] inject_axi_id_i,
-  input  logic                 inject_i,
+  input  logic 		       inject_i,
   // pop
   input  logic [AxiIdBits-1:0] pop_axi_id_i,
-  input  logic                 pop_i
+  input  logic 		       pop_i
 );
   localparam int unsigned NoCounters = 2**AxiIdBits;
   typedef logic [CounterWidth-1:0] cnt_t;
@@ -719,15 +719,15 @@ module axi_demux_id_counters #(
   //-----------------------------------
   // Lookup
   //-----------------------------------
-  assign lookup_mst_select_o          = mst_select_q[lookup_axi_id_i];
+  assign lookup_mst_select_o 	      = mst_select_q[lookup_axi_id_i];
   assign lookup_mst_select_occupied_o = occupied[lookup_axi_id_i];
   //-----------------------------------
   // Push and Pop
   //-----------------------------------
-  assign push_en   = (push_i)   ? (1 << push_axi_id_i)   : '0;
-  assign inject_en = (inject_i) ? (1 << inject_axi_id_i) : '0;
-  assign pop_en    = (pop_i)    ? (1 << pop_axi_id_i)    : '0;
-  assign full_o    = |cnt_full;
+  assign push_en 		      = (push_i)   ? (1 << push_axi_id_i)   : '0;
+  assign inject_en 		      = (inject_i) ? (1 << inject_axi_id_i) : '0;
+  assign pop_en 		      = (pop_i)    ? (1 << pop_axi_id_i)    : '0;
+  assign full_o 		      = |cnt_full;
   // counters
   for (genvar i = 0; i < NoCounters; i++) begin : gen_counters
     logic 			     cnt_en, cnt_down, overflow;
@@ -808,30 +808,30 @@ endmodule
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 module axi_demux_intf #(
-  parameter int unsigned AXI_ID_WIDTH     = 32'd0, // Synopsys DC requires default value for params
-  parameter bit          ATOP_SUPPORT     = 1'b1,
-  parameter int unsigned AXI_ADDR_WIDTH   = 32'd0,
-  parameter int unsigned AXI_DATA_WIDTH   = 32'd0,
-  parameter int unsigned AXI_USER_WIDTH   = 32'd0,
-  parameter int unsigned NO_MST_PORTS     = 32'd3,
-  parameter int unsigned MAX_TRANS        = 32'd8,
-  parameter int unsigned AXI_LOOK_BITS    = 32'd3,
-  parameter bit          UNIQUE_IDS       = 1'b0,
-  parameter bit          SPILL_AW         = 1'b1,
-  parameter bit          SPILL_W          = 1'b0,
-  parameter bit          SPILL_B          = 1'b0,
-  parameter bit          SPILL_AR         = 1'b1,
-  parameter bit          SPILL_R          = 1'b0,
+  parameter int unsigned AXI_ID_WIDTH 	= 32'd0, 		   // Synopsys DC requires default value for params
+  parameter bit 	 ATOP_SUPPORT 	= 1'b1,
+  parameter int unsigned AXI_ADDR_WIDTH = 32'd0,
+  parameter int unsigned AXI_DATA_WIDTH = 32'd0,
+  parameter int unsigned AXI_USER_WIDTH = 32'd0,
+  parameter int unsigned NO_MST_PORTS 	= 32'd3,
+  parameter int unsigned MAX_TRANS 	= 32'd8,
+  parameter int unsigned AXI_LOOK_BITS 	= 32'd3,
+  parameter bit 	 UNIQUE_IDS 	= 1'b0,
+  parameter bit 	 SPILL_AW 	= 1'b1,
+  parameter bit 	 SPILL_W 	= 1'b0,
+  parameter bit 	 SPILL_B 	= 1'b0,
+  parameter bit 	 SPILL_AR 	= 1'b1,
+  parameter bit 	 SPILL_R 	= 1'b0,
   // Dependent parameters, DO NOT OVERRIDE!
-  parameter int unsigned SELECT_WIDTH   = (NO_MST_PORTS > 32'd1) ? $clog2(NO_MST_PORTS) : 32'd1,
-  parameter type         select_t       = logic [SELECT_WIDTH-1:0] // MST port select type
+  parameter int unsigned SELECT_WIDTH 	= (NO_MST_PORTS > 32'd1) ? $clog2(NO_MST_PORTS) : 32'd1,
+  parameter type 	 select_t 	= logic [SELECT_WIDTH-1:0] // MST port select type
 ) (
-  input  logic    clk_i,                 // Clock
-  input  logic    rst_ni,                // Asynchronous reset active low
-  input  logic    test_i,                // Testmode enable
-  input  select_t slv_aw_select_i,       // has to be stable, when aw_valid
-  input  select_t slv_ar_select_i,       // has to be stable, when ar_valid
-  AXI_BUS.Slave   slv,                   // slave port
+  input  logic 	  clk_i, 		 // Clock
+  input  logic 	  rst_ni, 		 // Asynchronous reset active low
+  input  logic 	  test_i, 		 // Testmode enable
+  input  select_t slv_aw_select_i, 	 // has to be stable, when aw_valid
+  input  select_t slv_ar_select_i, 	 // has to be stable, when ar_valid
+  AXI_BUS.Slave   slv, 			 // slave port
   AXI_BUS.Master  mst [NO_MST_PORTS-1:0] // master ports
 );
 

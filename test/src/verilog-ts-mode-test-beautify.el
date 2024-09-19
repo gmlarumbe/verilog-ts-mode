@@ -29,19 +29,17 @@
 (defconst verilog-ts-mode-test-dump-dir-beautify (file-name-concat verilog-ts-mode-test-dump-dir "beautify"))
 
 
-(defconst verilog-ts-mode-test-beautify-file-list (mapcar (lambda (file)
-                                                            (file-name-concat verilog-ts-mode-test-files-common-dir file))
-                                                          '("axi_demux.sv" "instances.sv" "ucontroller.sv")))
+(defconst verilog-ts-mode-test-beautify-file-list verilog-ts-mode-test-common-file-list)
 
-;; TODO: At some point replace with `verilog-ts-mode-test-common-file-list'
-;; - When axi_test.sv does not give errors
 (defconst verilog-ts-mode-test-prettify-file-list
-  (append (mapcar (lambda (file)
-                    (file-name-concat verilog-ts-mode-test-files-common-dir file))
-                  '("axi_demux.sv" "instances.sv" "ucontroller.sv" "tb_program.sv"))
-          ;; verilog-ts-mode-test-common-file-list
+  (append verilog-ts-mode-test-common-file-list
           (test-hdl-directory-files (file-name-concat verilog-ts-mode-test-files-dir "prettify")
-                                    verilog-ts-file-extension-re)))
+                                    verilog-ts-file-extension-re)
+          (remove (lambda (file)
+                    (file-name-concat verilog-ts-mode-test-files-dir "veripool")
+                    ("indent_analog.v"))
+                  (test-hdl-directory-files (file-name-concat verilog-ts-mode-test-files-dir "veripool")
+                                            verilog-ts-file-extension-re))))
 
 
 
@@ -59,53 +57,36 @@
 
 (defun verilog-ts-mode-test-prettify--remove ()
   (let ((debug nil)
-        node)
+        node node-type)
     ;; Declarations
     (save-excursion
       (goto-char (point-min))
-      (while (setq node (treesit-search-forward (verilog-ts--node-at-point) verilog-ts-pretty-declarations-node-re))
-        (goto-char (treesit-node-start node))
+      (while (setq node (verilog-ts-pretty--search-forward 'decl))
+        (setq node-type (treesit-node-type node))
+        (verilog-ts-pretty-decl--goto-node-start node)
         (when debug
-          (message "Removing decl @ line %s" (line-number-at-pos (point))))
+          (message "Removing decl @ line %s / type: %s" (line-number-at-pos (point)) node-type))
         (just-one-space)
-        ;; Move to next declaration
-        (goto-char (treesit-node-end (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\_<\\(net\\|data\\)_declaration\\_>")))))
+        (verilog-ts-pretty-decl--goto-node-end node-type))) ; Move to next declaration
     ;; Expressions
     (save-excursion
       (goto-char (point-min))
-      (while (setq node (treesit-search-forward (verilog-ts--node-at-point) verilog-ts-pretty-expr-node-re))
-        (goto-char (treesit-node-end (verilog-ts--node-has-child-recursive node "\\_<variable_lvalue\\_>")))
-        (when debug
-          (message "Removing expr @ line %s" (line-number-at-pos (point))))
-        (just-one-space)
-        ;; Move to next expression
-        (goto-char (treesit-node-end (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\(statement_or_null\\|\\(non\\)?blocking_assignment\\)")))))))
+      (while (setq node (verilog-ts-pretty--search-forward 'expr))
+        (setq node-type (treesit-node-type node))
+        (if (verilog-ts--node-has-child-recursive node "<?=")
+            (progn
+              (verilog-ts-pretty-expr--goto-node-start node)
+              (when debug
+                (message "Removing expr @ line %s / type: %s" (line-number-at-pos (point)) node-type))
+              (just-one-space)
+              (verilog-ts-pretty-expr--goto-node-end))
+          (forward-line)))))) ; Move to next expression
 
 (defun verilog-ts-mode-test-prettify-file ()
-  (let ((debug nil)
-        node)
-    (verilog-ts-mode)
-    (verilog-ts-mode-test-prettify--remove)
-    ;; Declarations
-    (save-excursion
-      (goto-char (point-min))
-      (while (setq node (treesit-search-forward (verilog-ts--node-at-point) verilog-ts-pretty-declarations-node-re))
-        (goto-char (treesit-node-start node))
-        (when debug
-          (message "Prettifying decl @ line %s" (line-number-at-pos (point))))
-        (verilog-ts-pretty-declarations)
-        ;; Move to next declaration
-        (goto-char (treesit-node-end (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\_<\\(net\\|data\\)_declaration\\_>")))))
-    ;; Expressions
-    (save-excursion
-      (goto-char (point-min))
-      (while (setq node (treesit-search-forward (verilog-ts--node-at-point) verilog-ts-pretty-expr-node-re))
-        (goto-char (treesit-node-start node))
-        (when debug
-          (message "Prettifying expr @ line %s" (line-number-at-pos (point))))
-        (verilog-ts-pretty-expr)
-        ;; Move to next expression
-        (goto-char (treesit-node-end (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\(statement_or_null\\|\\(non\\)?blocking_assignment\\)")))))))
+  (verilog-ts-mode)
+  (verilog-ts-mode-test-prettify--remove)
+  (test-hdl-no-messages
+    (verilog-ts-pretty-current-buffer)))
 
 
 (defun verilog-ts-mode-test-beautify-gen-expected-files ()
@@ -118,7 +99,13 @@
   (test-hdl-gen-expected-files :file-list verilog-ts-mode-test-prettify-file-list
                                :dest-dir verilog-ts-mode-test-ref-dir-beautify
                                :out-file-ext "pretty.sv"
-                               :fn #'verilog-ts-mode-test-prettify-file))
+                               :fn #'verilog-ts-mode-test-prettify-file)
+  ;; Prettify (without comment aligment)
+  (let ((verilog-ts-align-decl-expr-comments nil))
+    (test-hdl-gen-expected-files :file-list verilog-ts-mode-test-prettify-file-list
+                                 :dest-dir verilog-ts-mode-test-ref-dir-beautify
+                                 :out-file-ext "no_comm_align.pretty.sv"
+                                 :fn #'verilog-ts-mode-test-prettify-file)))
 
 
 (ert-deftest beautify ()
@@ -134,6 +121,14 @@
                                                          :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-beautify (test-hdl-basename file "pretty.sv"))
                                                          :fn #'verilog-ts-mode-test-prettify-file)
                                   (file-name-concat verilog-ts-mode-test-ref-dir-beautify (test-hdl-basename file "pretty.sv"))))))
+
+(ert-deftest prettify::no-comment-alignment ()
+  (let ((verilog-ts-align-decl-expr-comments nil))
+    (dolist (file verilog-ts-mode-test-prettify-file-list)
+      (should (test-hdl-files-equal (test-hdl-process-file :test-file file
+                                                           :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-beautify (test-hdl-basename file "no_comm_align.pretty.sv"))
+                                                           :fn #'verilog-ts-mode-test-prettify-file)
+                                    (file-name-concat verilog-ts-mode-test-ref-dir-beautify (test-hdl-basename file "no_comm_align.pretty.sv")))))))
 
 
 (provide 'verilog-ts-mode-test-beautify)

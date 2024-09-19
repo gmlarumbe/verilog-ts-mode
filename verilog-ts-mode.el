@@ -100,6 +100,13 @@ Defaults to .v, .vh, .sv and .svh."
                  (const :tag "custom" custom))
   :group 'verilog-ts)
 
+(defcustom verilog-ts-align-decl-expr-comments t
+  "Non-nil means align declaration and expressions comments.
+
+Alignment is performed after execution of `verilog-ts-pretty-declarations' and
+`verilog-ts-pretty-expr'."
+  :group 'verilog-ts
+  :type 'boolean)
 
 ;;; Utils
 ;;;; Core
@@ -136,7 +143,7 @@ Defaults to .v, .vh, .sv and .svh."
   "Return first node of type NODE-TYPE that is a child of NODE in the parsed tree.
 If none is found, return nil."
   (when node
-    (treesit-search-subtree node node-type)))
+    (treesit-search-subtree node node-type nil :all)))
 
 (defun verilog-ts--node-identifier-name (node)
   "Return identifier name of NODE."
@@ -235,9 +242,12 @@ Snippet fetched from `treesit--indent-1'."
 Check also `treesit-thing-at-point' for similar functionality."
   (verilog-ts--highest-node-at-pos (car (bounds-of-thing-at-point 'symbol))))
 
-(defun verilog-ts--node-at-bol ()
+(defun verilog-ts--node-at-bol (&optional skip-comment)
   "Return node at first non-blank character of current line.
-Snippet fetched from `treesit--indent-1'."
+Snippet fetched from `treesit--indent-1'.
+
+If optional SKIP-COMMENT is non-nil return first node without taking comments
+into account."
   (let* ((bol (save-excursion
                 (forward-line 0)
                 (skip-chars-forward " \t")
@@ -253,7 +263,14 @@ Snippet fetched from `treesit--indent-1'."
                 smallest-node
                 (lambda (node)
                   (eq bol (treesit-node-start node))))))
-    node))
+    (if (and skip-comment
+             (string= (treesit-node-type node) "comment")
+             (> (line-end-position) (treesit-node-end node)))
+        (progn
+          (goto-char (treesit-node-end node))
+          (skip-chars-forward " \t")
+          (verilog-ts--highest-node-at-pos (point)))
+      node)))
 
 (defun verilog-ts-nodes (pred &optional start)
   "Return current buffer NODES that match PRED.
@@ -1281,9 +1298,9 @@ Indent package imports on ANSI headers, used in conjunction with
 
 (defun verilog-ts--anchor-assignment-pattern (_node parent &rest _)
   "A tree-sitter simple indent matcher for PARENT.
- - int a = '{0, 1, 2,
+- int a = '{0, 1, 2,
     -> Will indent the rest of the elements right below the first one.
- - int a = '{
+- int a = '{
     -> Will indent the rest of the elements with respect to parent-bol
        (assignment_pattern)."
   (let ((indent-node (treesit-node-child parent 1)))
@@ -1941,76 +1958,336 @@ Otherwise move to previous paragraph."
 
 
 ;;; Prettify
-(defconst verilog-ts-pretty-declarations-node-re "list_of_\\(net\\|variable\\)_decl_assignments")
-(defconst verilog-ts-pretty-expr-node-re "\\(non\\)?blocking_assignment")
+;;;; Common aux functions
+(defconst verilog-ts-pretty-decl-nodes-re
+  (eval-when-compile
+    (regexp-opt
+     '("list_of_net_decl_assignments"
+       "list_of_variable_decl_assignments"
+       "ansi_port_declaration"
+       "parameter_port_declaration"
+       "local_parameter_declaration"
+       "parameter_declaration"
+       "parameter_override")
+     'symbols)))
 
-(defun verilog-ts-pretty-declarations ()
-  "Line up declarations around point."
-  (interactive)
-  (let* ((decl-node-re verilog-ts-pretty-declarations-node-re)
-         (nodes (verilog-ts-nodes-block-at-point decl-node-re))
-         ;; TODO: Fix this!
-         ;; (nodes (verilog-ts-children-block-at-point (lambda (child)
-         ;;                                              (string= (treesit-node-type child) decl-node-re))))
+(defconst verilog-ts-pretty-expr-nodes-re
+  (eval-when-compile
+    (regexp-opt
+     '("nonblocking_assignment"
+       "blocking_assignment"
+       "list_of_net_decl_assignments"
+       "list_of_variable_decl_assignments"
+       "ansi_port_declaration"
+       "parameter_port_declaration"
+       "local_parameter_declaration"
+       "parameter_declaration"
+       "parameter_override"
+       "continuous_assign")
+     'symbols)))
+
+(defun verilog-ts-pretty--contiguous-elms (pred elm seq)
+  "Return sublist of contiguous elements that match PRED in SEQ.
+Search around matching ELM in SEQ."
+  (let* ((idx (when elm (seq-position seq elm)))
+         (elms-after (when idx (seq-take-while pred (seq-subseq seq idx))))
+         (elms-before (when idx (seq-take-while pred (nreverse (seq-subseq seq 0 idx))))))
+    `(,@(nreverse elms-before) ,@elms-after)))
+
+(defun verilog-ts-pretty--block-siblings (node-re &optional process-fn)
+  "Return syntax tree preprocessed to get siblings that match NODE-RE.
+
+Includes the blocks at point nodes so that there is a parent node for all
+desired siblings.
+
+If provided optional arg PROCESS-FN run it on each element of the induced
+sparse tree."
+  (cadr
+   (treesit-induce-sparse-tree
+    (or (verilog-ts-block-at-point)
+        (treesit-buffer-root-node))
+    (concat "\\(\\(" verilog-ts-block-at-point-re "\\)\\|\\(" node-re "\\)\\)")
+    process-fn)))
+
+(defun verilog-ts-pretty--nodes (type &optional no-filter-expr)
+  "Syntactic sugar to retrieve nodes to be prettified for declaration at point.
+
+TYPE could be either \='decl or \='expr depending on the thing to be aligned.
+
+If optional arg NO-FILTER-EXPR is non-nil, retrieve all siblings of
+expression-like nodes even if there is no assignment."
+  (let* ((nodes-re (pcase type
+                     ('decl verilog-ts-pretty-decl-nodes-re)
+                     ('expr verilog-ts-pretty-expr-nodes-re)
+                     (_ (error "Unexpected type: %s" type))))
+         (cur-decl-node (verilog-ts--node-has-child-recursive
+                         (if (region-active-p)
+                             (save-excursion
+                               (goto-char (region-beginning))
+                               (skip-chars-forward " \t")
+                               (verilog-ts--highest-node-at-pos (point)))
+                           (verilog-ts--node-at-bol))
+                         nodes-re))
+         (cur-decl-node-type (treesit-node-type cur-decl-node))
+         (all-siblings
+          (mapcar #'car
+                  (cdr (pcase cur-decl-node-type
+                         ((or "list_of_net_decl_assignments"
+                              "list_of_variable_decl_assignments")
+                          (if (verilog-ts--node-has-parent-recursive cur-decl-node "\\_<struct_union_member\\_>")
+                              (treesit-induce-sparse-tree (verilog-ts--node-has-parent-recursive cur-decl-node "data_declaration") "\\(\\_<struct_union\\_>\\|list_of_variable_decl_assignments\\)")
+                            (verilog-ts-pretty--block-siblings "list_of_\\(net\\|variable\\)_decl_assignments")))
+                         ("ansi_port_declaration"
+                          (treesit-induce-sparse-tree (verilog-ts--node-has-parent-recursive cur-decl-node "list_of_port_declarations") cur-decl-node-type))
+                         ("parameter_port_declaration"
+                          (treesit-induce-sparse-tree (verilog-ts--node-has-parent-recursive cur-decl-node "parameter_port_list") cur-decl-node-type))
+                         ((or "local_parameter_declaration"
+                              "parameter_declaration"
+                              "parameter_override")
+                          (seq-remove (lambda (elm)
+                                        (and (listp elm)
+                                             (eq (car elm) nil)))
+                                      (verilog-ts-pretty--block-siblings
+                                       "\\(\\(local_\\)?parameter_declaration\\|parameter_override\\)"
+                                       (lambda (node)
+                                         (when (not (verilog-ts--node-has-parent-recursive node "parameter_port_list"))
+                                           node)))))
+                         ((or "blocking_assignment"
+                              "nonblocking_assignment")
+                          (verilog-ts-pretty--block-siblings "\\(non\\)?blocking_assignment"))
+                         ("continuous_assign"
+                          (verilog-ts-pretty--block-siblings "continuous_assign"))
+                         (_ nil)))))
+         (nodes (verilog-ts-pretty--contiguous-elms (lambda (node)
+                                                      (string-match nodes-re (treesit-node-type node)))
+                                                    cur-decl-node
+                                                    all-siblings)))
+    ;; Filter nodes if region is active
+    (when (region-active-p)
+      (setq nodes (seq-filter (lambda (node)
+                                (and (>= (treesit-node-start node) (region-beginning))
+                                     (<= (treesit-node-end node) (region-end))))
+                              nodes)))
+    ;; Return nodes
+    (pcase type
+      ('decl nodes)
+      ('expr (if no-filter-expr
+                 nodes
+               (seq-filter (lambda (node)
+                             (verilog-ts--node-has-child-recursive node "<?="))
+                           nodes)))
+      (_ (error "Unexpected type: %s" type)))))
+
+(defun verilog-ts-align-comments (nodes)
+  "Align inline comments of NODES."
+  (let* ((node-lines-with-comments (save-excursion
+                                     (seq-filter (lambda (node)
+                                                   (goto-char (treesit-node-start node))
+                                                   (goto-char (line-beginning-position))
+                                                   (re-search-forward "//" (line-end-position) t))
+                                                 nodes)))
          (node-lines (mapcar (lambda (node)
                                (line-number-at-pos (treesit-node-start node)))
-                             nodes))
+                             node-lines-with-comments))
          (indent-levels (mapcar (lambda (node)
                                   (save-excursion
                                     (goto-char (treesit-node-start node))
+                                    (goto-char (line-beginning-position))
+                                    (re-search-forward "//" (line-end-position) t)
+                                    (backward-char 2)
                                     (skip-chars-backward " \t\n\r")
                                     (forward-char)
                                     (current-column)))
-                                nodes))
+                                node-lines-with-comments))
          (indent-level-max (when indent-levels
-                             (apply #'max indent-levels)))
-         current-node)
-    ;; Start processing
-    (when nodes
-      (save-excursion
-        (dolist (line node-lines )
-          (goto-char (point-min))
-          (forward-line (1- line))
-          (setq current-node (verilog-ts-search-node-block-at-point decl-node-re))
-          (goto-char (treesit-node-start current-node))
-          (just-one-space)
-          (indent-to indent-level-max))))))
-
-(defun verilog-ts-pretty-expr ()
-  "Line up expressions around point."
-  (interactive)
-  (let* ((decl-node-re verilog-ts-pretty-expr-node-re)
-         (align-node-re "variable_lvalue")
-         ;; TODO: Fix this!
-         (nodes (verilog-ts-nodes-block-at-point decl-node-re))
-         (node-lines (mapcar (lambda (node)
-                               (line-number-at-pos (treesit-node-start node)))
-                             nodes))
-         (indent-levels (mapcar (lambda (node)
-                                  (let ((lhs-node (verilog-ts--node-has-child-recursive node align-node-re)))
-                                    (save-excursion
-                                      (goto-char (treesit-node-end lhs-node))
-                                      (forward-char)
-                                      (current-column))))
-                                nodes))
-         (indent-level-max (when indent-levels
-                             (apply #'max indent-levels)))
-         current-node)
-    ;; Start processing
-    (when nodes
+                             (apply #'max indent-levels))))
+    (when node-lines-with-comments
       (save-excursion
         (dolist (line node-lines)
           (goto-char (point-min))
           (forward-line (1- line))
-          (setq current-node (verilog-ts-search-node-block-at-point align-node-re))
-          (goto-char (treesit-node-end current-node))
+          (re-search-forward "//" (line-end-position) t)
+          (backward-char 2)
           (just-one-space)
           (indent-to indent-level-max))))))
+
+(defun verilog-ts--pretty (type)
+  "Line up declarations and expressions around point.
+
+TYPE could be either \='decl or \='expr depending on the thing to be aligned."
+  (let* ((nodes-re (pcase type
+                     ('decl verilog-ts-pretty-decl-nodes-re)
+                     ('expr verilog-ts-pretty-expr-nodes-re)
+                     (_ (error "Unexpected type: %s" type))))
+         (nodes (verilog-ts-pretty--nodes type))
+         (node-lines (mapcar (lambda (node)
+                               (line-number-at-pos (treesit-node-start node)))
+                             nodes))
+         (indent-levels
+          (mapcar (lambda (node)
+                    (save-excursion
+                      (pcase type
+                        ('decl (verilog-ts-pretty-decl--goto-node-start node))
+                        ('expr (verilog-ts-pretty-expr--goto-node-start node))
+                        (_ (error "Unexpected type: %s" type)))
+                      (skip-chars-backward " \t\n\r")
+                      (forward-char)
+                      (current-column)))
+                  nodes))
+         (indent-level-max (when indent-levels
+                             (apply #'max indent-levels)))
+         cur-node)
+    ;; Start processing
+    (if nodes
+        (save-excursion
+          (dolist (line node-lines)
+            (goto-char (point-min))
+            (forward-line (1- line))
+            (when (setq cur-node (verilog-ts--node-has-child-recursive (verilog-ts--node-at-bol :skip-comment) nodes-re))
+              (pcase type
+                ('decl (verilog-ts-pretty-decl--goto-node-start cur-node))
+                ('expr (verilog-ts-pretty-expr--goto-node-start cur-node))
+                (_ (error "Unexpected type: %s" type)))
+              (just-one-space)
+              (indent-to indent-level-max)))
+          ;; Align comments if enabled
+          (when verilog-ts-align-decl-expr-comments
+            (verilog-ts-align-comments (verilog-ts-pretty--nodes type :no-filter-expr)))
+          (message "Aligned to col %s" indent-level-max))
+      (message "Point not at a declaration"))))
+
+;;;; Declarations
+(defun verilog-ts-pretty-decl--goto-node-start (node)
+  "Syntactic sugar to move point to NODE start position."
+  (let ((node-pos (treesit-node-start
+                   (pcase (treesit-node-type node)
+                     ((or "list_of_net_decl_assignments"
+                          "list_of_variable_decl_assignments")
+                      node)
+                     ("ansi_port_declaration" (treesit-node-child-by-field-name node "port_name"))
+                     ("parameter_port_declaration" (verilog-ts--node-has-child-recursive node "list_of_\\(param\\|type\\)_assignments"))
+                     ((or "local_parameter_declaration"
+                          "parameter_declaration"
+                          "parameter_override")
+                      (verilog-ts--node-has-child-recursive node "list_of_\\(def\\)?param_assignments"))
+                     (_ nil)))))
+    (when node-pos
+      (goto-char node-pos))))
+
+(defun verilog-ts-pretty-decl--goto-node-end (node-type)
+  "Syntactic sugar to move point to current node end pos depending on NODE-TYPE."
+  (let* ((node-at-point (verilog-ts--node-at-point))
+         (node (if (string-match node-type (treesit-node-type node-at-point))
+                   node-at-point
+                 (or (verilog-ts--node-has-parent-recursive node-at-point node-type)
+                     (verilog-ts--node-has-child-recursive node-at-point node-type))))
+         node-pos)
+    (pcase (treesit-node-type node)
+      ((or "list_of_net_decl_assignments"
+           "list_of_variable_decl_assignments")
+       (setq node-pos (treesit-node-end (verilog-ts--node-has-parent-recursive node "\\_<\\(net\\|data\\)_declaration\\_>")))
+       (when node-pos
+         (goto-char node-pos))
+       (forward-char)) ; Avoid getting stuck
+      ((or "ansi_port_declaration"
+           "parameter_port_declaration"
+           "local_parameter_declaration"
+           "parameter_declaration"
+           "parameter_override")
+       (setq node-pos (treesit-node-end node))
+       (when node-pos
+         (goto-char node-pos))
+       (forward-line 1)) ; Avoid getting stuck
+      (_
+       (error "Unexpected node-type: %s" node-type)))))
+
+(defun verilog-ts-pretty-declarations ()
+  "Line up declarations around point."
+  (interactive)
+  (verilog-ts--pretty 'decl))
+
+;;;; Expressions
+(defun verilog-ts-pretty-expr--goto-node-start (node)
+  "Syntactic sugar to move point to NODE start position."
+  (let ((node-pos (treesit-node-start (verilog-ts--node-has-child-recursive node "<?="))))
+    (when node-pos
+      (goto-char node-pos))))
+
+(defun verilog-ts-pretty-expr--goto-node-end ()
+  "Syntactic sugar to move point to NODE end position."
+  (let* ((node (verilog-ts--node-at-point))
+         node-pos)
+    (pcase (treesit-node-type node)
+      ((or "ansi_port_declaration"
+           "parameter_port_declaration"
+           "local_parameter_declaration"
+           "parameter_declaration"
+           "parameter_override")
+       (setq node-pos (treesit-node-end node))
+       (when node-pos
+         (goto-char node-pos))
+       (forward-line 1))
+      (_
+       (setq node-pos (treesit-node-end (verilog-ts--node-has-parent-recursive node verilog-ts-pretty-expr-nodes-re)))
+       (when node-pos
+         (goto-char node-pos))
+       (forward-char)))))
+
+(defun verilog-ts-pretty-expr ()
+  "Line up expressions around point."
+  (interactive)
+  (verilog-ts--pretty 'expr))
+
+;;;; File
+(defun verilog-ts-pretty--search-forward (type)
+  "Search forward next prettifiable node.
+
+TYPE could be either \='decl or \='expr depending on the thing to be aligned.
+
+Take into account that due to `treesit-search-forward' behavior with
+`verilog-ts-pretty-decl-nodes-re' and `verilog-ts-pretty-expr-nodes-re',
+parameter_port_declaration might be shadowed by parameter_declaration nodes."
+  (let* ((nodes-re (pcase type
+                     ('decl verilog-ts-pretty-decl-nodes-re)
+                     ('expr verilog-ts-pretty-expr-nodes-re)
+                     (_ (error "Unexpected type: %s" type))))
+         (node (treesit-search-forward (verilog-ts--node-at-point) nodes-re)))
+    (when (and node
+               (eq type 'expr)
+               (not (verilog-ts--node-has-child-recursive node "<?=")))
+      (goto-char (treesit-node-end node))
+      (forward-line 1)
+      (verilog-ts-pretty--search-forward 'expr))
+    (cond (;; Parameter port
+           (and (string= (treesit-node-type node) "parameter_declaration")
+                (verilog-ts--node-has-parent-recursive node "parameter_port_declaration"))
+           (verilog-ts--node-has-parent-recursive node "parameter_port_declaration"))
+          ;; Default
+          (t node))))
+
+(defun verilog-ts-pretty-current-buffer ()
+  "Align all declarations and expressions of current buffer."
+  (let (node node-type)
+    ;; Declarations
+    (save-excursion
+      (goto-char (point-min))
+      (while (setq node (verilog-ts-pretty--search-forward 'decl))
+        (setq node-type (treesit-node-type node))
+        (goto-char (treesit-node-start node))
+        (verilog-ts-pretty-declarations)
+        (verilog-ts-pretty-decl--goto-node-end node-type))) ; Move to next declaration
+    ;; Expressions
+    (save-excursion
+      (goto-char (point-min))
+      (while (setq node (verilog-ts-pretty--search-forward 'expr))
+        (setq node-type (treesit-node-type node))
+        (goto-char (treesit-node-start node))
+        (verilog-ts-pretty-expr)
+        (verilog-ts-pretty-expr--goto-node-end))))) ; Move to next expression
 
 ;;; Beautify
 (defun verilog-ts-beautify-block-at-point ()
   "Beautify/indent block at point.
-
 If block is an instance, also align parameters and ports."
   (interactive)
   (let ((node (verilog-ts-block-at-point))
@@ -2034,14 +2311,9 @@ If block is an instance, also align parameters and ports."
           (align-regexp (treesit-node-start ports-node) (treesit-node-end ports-node) re 1 1 nil))))
     (message "%s : %s" type name)))
 
-(defun verilog-ts-beautify-current-buffer ()
-  "Beautify current buffer:
-- Indent whole buffer
-- Beautify every instantiated module
-- Untabify and delete trailing whitespace"
-  (interactive)
+(defun verilog-ts-beautify-instances-current-buffer ()
+  "Beautify all the instances in current buffer."
   (let (node)
-    (indent-region (point-min) (point-max))
     (save-excursion
       (goto-char (point-min))
       (while (setq node (treesit-search-forward (verilog-ts--node-at-point) verilog-ts-instance-re))
@@ -2050,9 +2322,23 @@ If block is an instance, also align parameters and ports."
         (setq node (treesit-search-forward (verilog-ts--node-at-point) verilog-ts-instance-re))
         (goto-char (treesit-node-end node))
         (when (not (eobp))
-          (forward-char))))
-    (untabify (point-min) (point-max))
-    (delete-trailing-whitespace (point-min) (point-max))))
+          (forward-char))))))
+
+(defun verilog-ts-beautify-current-buffer ()
+  "Beautify current buffer:
+- Indent whole buffer
+- Beautify every instantiated module
+- Prettify declarations and expressions
+- Untabify and delete trailing whitespace"
+  (interactive)
+  (indent-region (point-min) (point-max))
+  (verilog-ts-beautify-instances-current-buffer)
+  (verilog-ts-pretty-current-buffer)
+  (untabify (point-min) (point-max))
+  (delete-trailing-whitespace (point-min) (point-max))
+  (message "Beautified %s" (or (and (buffer-file-name)
+                                    (file-name-nondirectory (buffer-file-name)))
+                               (buffer-name))))
 
 (defun verilog-ts-beautify-files (files)
   "Beautify SystemVerilog FILES.
