@@ -703,7 +703,7 @@ obj.method();"
      (["."] @verilog-ts-font-lock-operator-face)
      (["(" ")"] @verilog-ts-font-lock-parenthesis-face)
      (["[" "]"] @verilog-ts-font-lock-brackets-face)
-     (["{" "}"] @verilog-ts-font-lock-curly-braces-face)
+     (["{" "}" "'{"] @verilog-ts-font-lock-curly-braces-face)
      (["@" "#" "##"] @verilog-ts-font-lock-time-event-face))
 
    :feature 'operator
@@ -888,6 +888,8 @@ obj.method();"
      (constant_indexed_range
       (constant_expression) @verilog-ts-font-lock-brackets-content-face)
      (value_range ; inside {[min_range:max_range]}, place here to apply override
+      (expression) @font-lock-constant-face)
+     (dynamic_array_new
       (expression) @font-lock-constant-face))
 
    :feature 'misc
@@ -1409,6 +1411,9 @@ Indent package imports on ANSI headers, used in conjunction with
      ((node-is "actual_argument") parent 0)
      ;; Blank lines and continued strings
      (verilog-ts--matcher-continued-string verilog-ts--anchor-continued-string 0)
+     ((and (parent-is "list_of_\\(port_connections\\|parameter_value_assignments\\)")
+           verilog-ts--matcher-blank-line)
+      parent-bol 0)
      (verilog-ts--matcher-blank-line parent-bol verilog-ts-indent-level)
      ;; Default indent
      (verilog-ts--matcher-default-indent parent-bol verilog-ts-indent-level))))
