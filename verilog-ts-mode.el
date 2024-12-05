@@ -331,15 +331,30 @@ and end position."
 
 (defun verilog-ts-module-at-point ()
   "Return node of module at point."
-  (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "module_declaration"))
+  (let ((module (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "module_declaration"))
+        (pos (point)))
+    (when (and module
+               (>= pos (treesit-node-start module))
+               (<= pos (treesit-node-end module)))
+      module)))
 
 (defun verilog-ts-instance-at-point ()
   "Return node of instance at point."
-  (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-instance-re))
+  (let ((instance (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-instance-re))
+        (pos (point)))
+    (when (and instance
+               (>= pos (treesit-node-start instance))
+               (<= pos (treesit-node-end instance)))
+      instance)))
 
 (defun verilog-ts-block-at-point ()
   "Return node of block at point."
-  (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-block-at-point-re))
+  (let ((block (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-block-at-point-re))
+        (pos (point)))
+    (when (and block
+               (>= pos (treesit-node-start block))
+               (<= pos (treesit-node-end block)))
+      block)))
 
 (defun verilog-ts-nodes-block-at-point (pred)
   "Return block at point NODES that match PRED."

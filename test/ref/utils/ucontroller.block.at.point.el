@@ -5,4 +5,4 @@
  ("module_instantiation" . 2699)
  ("module_declaration" . 4873)
  ("module_declaration" . 4874)
- ("module_declaration" . 4888))
+ (nil . 4888))
