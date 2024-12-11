@@ -272,6 +272,14 @@ into account."
           (verilog-ts--highest-node-at-pos (point)))
       node)))
 
+(defun verilog-ts--node-parents-list (node node-type)
+  "Return NODE parents that match NODE-TYPE as a list of nodes."
+  (let (parent parent-list)
+    (while (setq parent (verilog-ts--node-has-parent-recursive node node-type))
+      (push parent parent-list)
+      (setq node parent))
+    (nreverse parent-list)))
+
 (defun verilog-ts-nodes (pred &optional start)
   "Return current buffer NODES that match PRED.
 
@@ -347,14 +355,22 @@ and end position."
                (<= pos (treesit-node-end instance)))
       instance)))
 
+(defun verilog-ts--block-at-point (regex)
+  "Return deepest node of block at point that matches REGEX."
+  (let ((blocks (verilog-ts--node-parents-list (verilog-ts--node-at-point) regex))
+        (pos (point)))
+    (catch 'block
+      (mapc (lambda (block)
+              (when (and block
+                         (>= pos (treesit-node-start block))
+                         (<= pos (treesit-node-end block)))
+                (throw 'block block)))
+            blocks)
+      nil)))
+
 (defun verilog-ts-block-at-point ()
   "Return node of block at point."
-  (let ((block (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-block-at-point-re))
-        (pos (point)))
-    (when (and block
-               (>= pos (treesit-node-start block))
-               (<= pos (treesit-node-end block)))
-      block)))
+  (verilog-ts--block-at-point verilog-ts-block-at-point-re))
 
 (defun verilog-ts-nodes-block-at-point (pred)
   "Return block at point NODES that match PRED."
@@ -1724,10 +1740,13 @@ type.")
 
 (defun verilog-ts-which-func-function ()
   "Retrieve `which-func' candidates."
-  (let ((node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts-imenu-create-index-re)))
-    (when node
-      (setq verilog-ts-which-func-extra (verilog-ts--node-identifier-name node))
-      (funcall verilog-ts-which-func-format-function node))))
+  (let ((node (verilog-ts--block-at-point verilog-ts-imenu-create-index-re)))
+    (if node
+        (progn
+          (setq verilog-ts-which-func-extra (verilog-ts--node-identifier-name node))
+          (funcall verilog-ts-which-func-format-function node))
+      (setq verilog-ts-which-func-extra nil)
+      "n/a")))
 
 (defun verilog-ts-which-func-setup ()
   "Hook for `verilog-ts-mode' to enable `which-func'."
@@ -2311,24 +2330,31 @@ parameter_port_declaration might be shadowed by parameter_declaration nodes."
 If block is an instance, also align parameters and ports."
   (interactive)
   (let ((node (verilog-ts-block-at-point))
-        start end type name)
+        (start (make-marker))
+        (end (make-marker))
+        type name)
     (unless node
       (user-error "Not inside a block"))
-    (setq start (treesit-node-start node))
-    (setq end (treesit-node-end node))
-    (setq type (treesit-node-type node))
-    (setq name (verilog-ts--node-identifier-name node))
-    (indent-region start end)
-    ;; Instance: also align ports and params
-    (when (string-match verilog-ts-instance-re type)
-      (let ((re "\\(\\s-*\\)(")
-            params-node ports-node)
-        (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `indent-region'
-        (when (setq params-node (verilog-ts--node-has-child-recursive node "list_of_parameter_value_assignments"))
-          (align-regexp (treesit-node-start params-node) (treesit-node-end params-node) re 1 1 nil))
-        (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `align-regexp' for parameter list
-        (when (setq ports-node (verilog-ts--node-has-child-recursive node "list_of_port_connections"))
-          (align-regexp (treesit-node-start ports-node) (treesit-node-end ports-node) re 1 1 nil))))
+    (save-excursion
+      (set-marker start (treesit-node-start node))
+      (set-marker end (treesit-node-end node))
+      (setq type (treesit-node-type node))
+      (setq name (verilog-ts--node-identifier-name node))
+      (indent-region start end)
+      ;; Instance: also align ports and params
+      (when (string-match verilog-ts-instance-re type)
+        (let ((re "\\(\\s-*\\)(")
+              params-node ports-node)
+          (goto-char start)
+          (skip-chars-forward " \t")
+          (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `indent-region'
+          (when (setq params-node (verilog-ts--node-has-child-recursive node "list_of_parameter_value_assignments"))
+            (align-regexp (treesit-node-start params-node) (treesit-node-end params-node) re 1 1 nil))
+          (goto-char start)
+          (skip-chars-forward " \t")
+          (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `align-regexp' for parameter list
+          (when (setq ports-node (verilog-ts--node-has-child-recursive node "list_of_port_connections"))
+            (align-regexp (treesit-node-start ports-node) (treesit-node-end ports-node) re 1 1 nil)))))
     (message "%s : %s" type name)))
 
 (defun verilog-ts-beautify-instances-current-buffer ()
