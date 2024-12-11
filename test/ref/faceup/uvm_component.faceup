@@ -767,7 +767,7 @@
 
   «k:extern» «k:function» «t:void» «f:print_config_with_audit»«:verilog-ts-font-lock-parenthesis-face:(»«t:bit» recurse «:verilog-ts-font-lock-punctuation-face:=» 0«:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:;»
 
-  «:verilog-ts-font-lock-error-face:static» «:verilog-ts-font-lock-preprocessor-face:`ifndef» UVM_ENABLE_DEPRECATED_API «:verilog-ts-font-lock-error-face:local» «:verilog-ts-font-lock-preprocessor-face:`endif» «t:bit» print_config_matches«:verilog-ts-font-lock-punctuation-face:;»
+  «:(:underline (:style wave :color "Red1")):static» «:verilog-ts-font-lock-preprocessor-face:`ifndef» UVM_ENABLE_DEPRECATED_API «:(:underline (:style wave :color "Red1")):«k:local»» «:verilog-ts-font-lock-preprocessor-face:`endif» «t:bit» print_config_matches«:verilog-ts-font-lock-punctuation-face:;»
 
   «x:// Function: get_print_config_matches»
   «x://»

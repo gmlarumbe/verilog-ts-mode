@@ -631,12 +631,6 @@ obj.method();"
   "Face for RTL attributes."
   :group 'verilog-ts-faces)
 
-(defvar verilog-ts-font-lock-error-face 'verilog-ts-font-lock-error-face)
-(defface verilog-ts-font-lock-error-face
-  '((t (:underline (:style wave :color "Red1"))))
-  "Face for tree-sitter parsing errors."
-  :group 'verilog-ts-faces)
-
 
 ;;;; Keywords
 ;; There are some keywords that are not recognized by tree-sitter grammar.
@@ -701,6 +695,17 @@ obj.method();"
               "unconnected_drive" "line" "begin_keywords" "pragma" "__FILE__"
               "__LINE__"))))
 
+
+;;;; Functions
+(defun verilog-ts--fontify-error (node _override start end &rest _)
+  "Fontify a syntax error with a red wavy underline.
+
+For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
+  (treesit-fontify-with-override (treesit-node-start node)
+                                 (treesit-node-end node)
+                                 '(:underline (:style wave :color "Red1"))
+                                 'append
+                                 start end))
 
 ;;;; Treesit-settings
 (defvar verilog-ts--font-lock-settings
@@ -991,7 +996,7 @@ obj.method();"
    :feature 'error
    :language 'verilog
    :override t
-   '((ERROR) @verilog-ts-font-lock-error-face)))
+   '((ERROR) @verilog-ts--fontify-error)))
 
 
 ;;; Indent
