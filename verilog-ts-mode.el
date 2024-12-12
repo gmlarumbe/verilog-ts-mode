@@ -865,14 +865,18 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
      (name_of_instance
       instance_name: (simple_identifier) @verilog-ts-font-lock-instance-face)
      ;; Instance parameters
-     (parameter_value_assignment
-      (list_of_parameter_value_assignments
-       (named_parameter_assignment
-        (simple_identifier) @verilog-ts-font-lock-port-connection-face)))
-     (ordered_parameter_assignment
-      (param_expression
-       (data_type
-        (simple_identifier) @verilog-ts-font-lock-port-connection-face)))
+     (module_instantiation ; Assume module_instantiation has higher dynamic precedence than other instantiations
+      (parameter_value_assignment
+       (list_of_parameter_value_assignments
+        (named_parameter_assignment
+         (simple_identifier) @verilog-ts-font-lock-port-connection-face))))
+     (module_instantiation ; Assume module_instantiation has higher dynamic precedence than other instantiations
+      (parameter_value_assignment
+       (list_of_parameter_value_assignments
+        (ordered_parameter_assignment
+         (param_expression
+          (data_type
+           (simple_identifier) @verilog-ts-font-lock-port-connection-face))))))
      ;; Port names
      (named_port_connection
       port_name: (simple_identifier) @verilog-ts-font-lock-port-connection-face)
@@ -990,7 +994,11 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
      (covergroup_value_range
       (expression) @font-lock-constant-face)
      ;; Queue dimension
-     (("$") @font-lock-constant-face))
+     (("$") @font-lock-constant-face)
+     ;; Parameterized classes (e.g: uvm_config_db #(axi_stream_agent_config))
+     (class_type
+      (parameter_value_assignment
+       (list_of_parameter_value_assignments) @verilog-ts-font-lock-dot-name-face)))
 
    :feature 'system-tf
    :language 'verilog
@@ -2526,8 +2534,8 @@ and the linker to be installed and on PATH."
     (setq-local treesit-font-lock-feature-list
                 '((comment string)
                   (keyword operator)
-                  (preprocessor punctuation type declaration instance number array system-tf misc)
-                  (error)))
+                  (preprocessor type declaration instance system-tf misc error)
+                  (punctuation number array)))
     (setq-local treesit-font-lock-settings verilog-ts--font-lock-settings)
     ;; Indent.
     (setq-local indent-line-function nil)
