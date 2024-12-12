@@ -108,6 +108,12 @@ Alignment is performed after execution of `verilog-ts-pretty-declarations' and
   :group 'verilog-ts
   :type 'boolean)
 
+(defcustom verilog-ts-linter-enable t
+  "Non-nil means enable tree-sitter based linting."
+  :group 'verilog-ts
+  :type 'boolean)
+
+
 ;;; Utils
 ;;;; Core
 (defconst verilog-ts-instance-re "\\_<\\(module\\|interface\\|program\\|gate\\|udp\\|checker\\)_instantiation\\_>")
@@ -701,11 +707,12 @@ obj.method();"
   "Fontify a syntax error with a red wavy underline.
 
 For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
-  (treesit-fontify-with-override (treesit-node-start node)
-                                 (treesit-node-end node)
-                                 '(:underline (:style wave :color "Red1"))
-                                 'append
-                                 start end))
+  (when verilog-ts-linter-enable
+    (treesit-fontify-with-override (treesit-node-start node)
+                                   (treesit-node-end node)
+                                   '(:underline (:style wave :color "Red1"))
+                                   'append
+                                   start end)))
 
 ;;;; Treesit-settings
 (defvar verilog-ts--font-lock-settings
