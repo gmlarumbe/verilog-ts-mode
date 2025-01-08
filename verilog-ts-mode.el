@@ -118,8 +118,7 @@ Alignment is performed after execution of `verilog-ts-pretty-declarations' and
 ;;;; Core
 (defconst verilog-ts-instance-re "\\_<\\(module\\|interface\\|program\\|gate\\|udp\\|checker\\)_instantiation\\_>")
 (defconst verilog-ts-port-header-ts-re "\\_<\\(variable\\|net\\|interface\\)_port_header\\_>")
-
-(defconst verilog-ts--declaration-node-re
+(defconst verilog-ts-declaration-node-re
   (eval-when-compile
     (regexp-opt
      '("package_declaration"
@@ -133,10 +132,67 @@ Alignment is performed after execution of `verilog-ts-pretty-declarations' and
        "config_declaration")
      'symbols)))
 
+(defun verilog-ts--node-at-point (&optional bound)
+  "Return tree-sitter node at point.
 
-(defun verilog-ts--node-at-point ()
-  "Return tree-sitter node at point."
-  (treesit-node-at (point) 'verilog))
+If optional BOUND is non-nil, return nil if point is not over a symbol."
+  (let* ((pos (point))
+         (node (treesit-node-at pos 'verilog)))
+    (if bound
+        (when (and (>= pos (treesit-node-start node))
+                   (<= pos (treesit-node-end node)))
+          node)
+      node)))
+
+(defun verilog-ts--highest-node-at-pos (pos)
+  "Return highest node starting at POS in the parsed tree.
+
+Return nil if POS is at a whitespace character.
+
+Snippet fetched from `treesit--indent-1'."
+  (let* ((smallest-node (verilog-ts--node-at-point))
+         (node (treesit-parent-while
+                smallest-node
+                (lambda (node)
+                  (eq pos (treesit-node-start node))))))
+    node))
+
+(defun verilog-ts--highest-node-at-point (&optional bound)
+  "Return highest node at point.
+
+If optional BOUND is non-nil, return nil if point is not over a symbol."
+  (verilog-ts--highest-node-at-pos (treesit-node-start (verilog-ts--node-at-point bound))))
+
+(defun verilog-ts--node-at-bol (&optional skip-comment)
+  "Return node at first non-blank character of current line.
+
+Snippet fetched from `treesit--indent-1'.
+
+If optional SKIP-COMMENT is non-nil return first node without taking comments
+into account."
+  (let* ((bol (save-excursion
+                (forward-line 0)
+                (skip-chars-forward " \t")
+                (point)))
+         (smallest-node
+          (cond ((null (treesit-parser-list)) nil)
+                ((eq 1 (length (treesit-parser-list)))
+                 (treesit-node-at bol))
+                ((treesit-language-at (point))
+                 (treesit-node-at bol (treesit-language-at (point))))
+                (t (treesit-node-at bol))))
+         (node (treesit-parent-while
+                smallest-node
+                (lambda (node)
+                  (eq bol (treesit-node-start node))))))
+    (if (and skip-comment
+             (string= (treesit-node-type node) "comment")
+             (> (line-end-position) (treesit-node-end node)))
+        (progn
+          (goto-char (treesit-node-end node))
+          (skip-chars-forward " \t")
+          (verilog-ts--highest-node-at-pos (point)))
+      node)))
 
 (defun verilog-ts--node-has-parent-recursive (node node-type)
   "Return non-nil if NODE is part of NODE-TYPE in the parsed tree."
@@ -151,6 +207,14 @@ If none is found, return nil."
   (when node
     (treesit-search-subtree node node-type nil :all)))
 
+(defun verilog-ts--node-parents-list (node node-type)
+  "Return NODE parents that match NODE-TYPE as a list of nodes."
+  (let (parent parent-list)
+    (while (setq parent (verilog-ts--node-has-parent-recursive node node-type))
+      (push parent parent-list)
+      (setq node parent))
+    (nreverse parent-list)))
+
 (defun verilog-ts--node-identifier-name (node)
   "Return identifier name of NODE."
   (when node
@@ -159,7 +223,7 @@ If none is found, return nil."
            (or (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props) ; extern module instantiation
                (treesit-node-text (treesit-node-child-by-field-name (treesit-search-subtree node "\\_<module_\\(non\\)?ansi_header") "name") :no-props)))
           ;; package/class/function/task/checker/config
-          ((string-match verilog-ts--declaration-node-re (treesit-node-type node))
+          ((string-match verilog-ts-declaration-node-re (treesit-node-type node))
            (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props))
           ;; class constructor
           ((string-match "\\_<class_constructor_\\(prototype\\|declaration\\)\\_>" (treesit-node-type node))
@@ -230,84 +294,6 @@ Node must be of type `verilog-ts-instance-re'.  Otherwise return nil."
   (let ((child-node (treesit-search-subtree node "name_of_instance")))
     (treesit-node-text (treesit-node-child-by-field-name child-node "instance_name") :no-props)))
 
-(defun verilog-ts--highest-node-at-pos (pos)
-  "Return highest node starting at POS in the parsed tree.
-
-Only might work as expected if point is at the beginning of a symbol.
-
-Snippet fetched from `treesit--indent-1'."
-  (let* ((smallest-node (verilog-ts--node-at-point))
-         (node (treesit-parent-while
-                smallest-node
-                (lambda (node)
-                  (eq pos (treesit-node-start node))))))
-    node))
-
-(defun verilog-ts--highest-node-at-symbol ()
-  "Return highest node in the hierarchy for symbol at point.
-Check also `treesit-thing-at-point' for similar functionality."
-  (verilog-ts--highest-node-at-pos (car (bounds-of-thing-at-point 'symbol))))
-
-(defun verilog-ts--node-at-bol (&optional skip-comment)
-  "Return node at first non-blank character of current line.
-Snippet fetched from `treesit--indent-1'.
-
-If optional SKIP-COMMENT is non-nil return first node without taking comments
-into account."
-  (let* ((bol (save-excursion
-                (forward-line 0)
-                (skip-chars-forward " \t")
-                (point)))
-         (smallest-node
-          (cond ((null (treesit-parser-list)) nil)
-                ((eq 1 (length (treesit-parser-list)))
-                 (treesit-node-at bol))
-                ((treesit-language-at (point))
-                 (treesit-node-at bol (treesit-language-at (point))))
-                (t (treesit-node-at bol))))
-         (node (treesit-parent-while
-                smallest-node
-                (lambda (node)
-                  (eq bol (treesit-node-start node))))))
-    (if (and skip-comment
-             (string= (treesit-node-type node) "comment")
-             (> (line-end-position) (treesit-node-end node)))
-        (progn
-          (goto-char (treesit-node-end node))
-          (skip-chars-forward " \t")
-          (verilog-ts--highest-node-at-pos (point)))
-      node)))
-
-(defun verilog-ts--node-parents-list (node node-type)
-  "Return NODE parents that match NODE-TYPE as a list of nodes."
-  (let (parent parent-list)
-    (while (setq parent (verilog-ts--node-has-parent-recursive node node-type))
-      (push parent parent-list)
-      (setq node parent))
-    (nreverse parent-list)))
-
-(defun verilog-ts-nodes (pred &optional start)
-  "Return current buffer NODES that match PRED.
-
-If optional arg START is non-nil, use it as the initial node to search in the
-tree."
-  (let ((root-node (or start (treesit-buffer-root-node))))
-    (mapcar #'car (cdr (treesit-induce-sparse-tree root-node pred)))))
-
-(defun verilog-ts-nodes-props (pred &optional start)
-  "Return nodes and properties that satisfy PRED in current buffer.
-
-If optional arg START is non-nil, use it as the initial node to search in the
-tree.
-
-Returned properties are a property list that include node name, start position
-and end position."
-  (mapcar (lambda (node)
-            `(,node :name ,(verilog-ts--node-identifier-name node)
-                    :start-pos ,(treesit-node-start node)
-                    :end-pos ,(treesit-node-end node)))
-          (verilog-ts-nodes pred start)))
-
 (defun verilog-ts--inside-module-or-interface-p ()
   "Return non-nil if point is inside a module or interface construct."
   (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "\\_<\\(module\\|interface\\)_declaration\\_>"))
@@ -320,6 +306,7 @@ and end position."
                (string= (treesit-node-text (treesit-node-child node 0) :no-prop) "typedef")
                (string= (treesit-node-text (treesit-node-child node 1) :no-prop) "class"))
       (treesit-node-text (treesit-node-child-by-field-name node "type_name") :no-prop))))
+
 
 ;;;; Context
 (defconst verilog-ts-block-at-point-re
@@ -342,6 +329,27 @@ and end position."
        "seq_block")
      'symbols)))
 
+(defun verilog-ts-nodes (pred &optional start)
+  "Return current buffer NODES that match PRED.
+
+If optional arg START is non-nil, use it as the initial node to search in the
+tree."
+  (let ((root-node (or start (treesit-buffer-root-node))))
+    (mapcar #'car (cdr (treesit-induce-sparse-tree root-node pred)))))
+
+(defun verilog-ts-nodes-props (pred &optional start)
+  "Return nodes and properties that satisfy PRED in current buffer.
+
+If optional arg START is non-nil, use it as the initial node to search in the
+tree.
+
+Returned properties are a property list that include node name, start position
+and end position."
+  (mapcar (lambda (node)
+            `(,node :name ,(verilog-ts--node-identifier-name node)
+                    :start-pos ,(treesit-node-start node)
+                    :end-pos ,(treesit-node-end node)))
+          (verilog-ts-nodes pred start)))
 
 (defun verilog-ts-module-at-point ()
   "Return node of module at point."
@@ -462,39 +470,88 @@ for all nodes.  If BACKWARD is non-nil, search backwards."
 
 
 ;;;; Navigation
+(defconst verilog-ts--forward-sexp-re ; Same as `verilog-ts--defun-type-re'
+  (eval-when-compile
+    (regexp-opt
+     '("module_declaration"
+       "interface_declaration"
+       "program_declaration"
+       "package_declaration"
+       "class_declaration"
+       "class_method"
+       "class_constructor_declaration"
+       "function_declaration"
+       "task_declaration")
+     'symbols)))
+
+(defconst verilog-ts--backward-sexp-re
+  (eval-when-compile
+    (regexp-opt
+     '("endmodule"
+       "endinterface"
+       "endprogram"
+       "endpackage"
+       "endclass"
+       "endfunction"
+       "endtask")
+     'symbols)))
+
 (defun verilog-ts-forward-sexp (&optional arg)
   "Move forward across S-expressions.
 
 With `prefix-arg', move ARG expressions."
   (interactive "p")
-  (if (member (following-char) '(?\( ?\{ ?\[))
-      (if (and arg (< arg 0))
-          (backward-sexp arg)
-        (forward-sexp arg))
-    (let* ((node (or (verilog-ts--highest-node-at-symbol)
-                     (verilog-ts--node-at-point)))
-           (beg (treesit-node-start node))
-           (end (treesit-node-end node)))
-      (if (and arg (< arg 0))
-          (goto-char beg)
-        (goto-char end)))))
+  (let* ((node (verilog-ts--node-at-point))
+         (node-type (treesit-node-type (verilog-ts--node-at-point)))
+         (highest-node (verilog-ts--highest-node-at-point))
+         (highest-node-type (treesit-node-type highest-node)))
+    (cond (;; Defuns
+           (or (string-match verilog-ts--forward-sexp-re highest-node-type)
+               (string= "extern" node-type))
+           (if (and arg (< arg 0))
+               (goto-char (treesit-node-start highest-node))
+             (goto-char (treesit-node-end highest-node))))
+          ;; begin/end
+          ((string= "begin" node-type)
+           (let ((seq-block-node (verilog-ts--node-has-parent-recursive node "seq_block")))
+             (goto-char (treesit-node-end seq-block-node))))
+          ;; Default
+          (t
+           (if (and arg (< arg 0))
+               (backward-sexp arg)
+             (forward-sexp arg))))))
 
 (defun verilog-ts-backward-sexp (&optional arg)
   "Move backward across S-expressions.
 
 With `prefix-arg', move ARG expressions."
   (interactive "p")
-  (if (member (preceding-char) '(?\) ?\} ?\]))
-      (if (and arg (< arg 0))
-          (forward-sexp arg)
-        (backward-sexp arg))
-    (let* ((node (treesit-node-parent (verilog-ts--node-at-point)))
-           (beg (treesit-node-start node))
-           (end (treesit-node-end node)))
-      (if (and arg (< arg 0))
-          (goto-char end)
-        (goto-char beg)))))
-
+  (let* ((node (verilog-ts--node-at-point))
+         (node-type (treesit-node-type (verilog-ts--node-at-point)))
+         (prev-sibling (treesit-node-prev-sibling node))
+         (prev-sibling-2 (treesit-node-prev-sibling prev-sibling))
+         (prev-sibling-type (treesit-node-type prev-sibling))
+         (prev-sibling-2-type (treesit-node-type prev-sibling-2)))
+    (cond (;; Defuns
+           (or (string-match verilog-ts--backward-sexp-re node-type)
+               (and (string= ":" node-type)
+                    (string-match verilog-ts--backward-sexp-re prev-sibling-type))
+               (and (string= "simple_identifier" node-type)
+                    (string= ":" prev-sibling-type)
+                    (string-match verilog-ts--backward-sexp-re prev-sibling-2-type)))
+           (let ((parent-node (verilog-ts--node-has-parent-recursive node verilog-ts--forward-sexp-re)))
+             (if (and arg (< arg 0))
+                 (goto-char (treesit-node-end parent-node))
+               (goto-char (treesit-node-start parent-node)))))
+          ;; begin/end
+          ((string= "end" node-type)
+           (let ((seq-block-node (verilog-ts--node-has-parent-recursive node "seq_block")))
+             (goto-char (treesit-node-start seq-block-node))))
+          ;; Default
+          (t
+           (if (and arg (< arg 0))
+               (forward-sexp arg)
+             (backward-sexp arg))))))
 
 ;;; Font-lock
 ;;;; Faces
@@ -1797,21 +1854,9 @@ type.")
 
 
 ;;; Navigation
-(defconst verilog-ts--defun-type-regexp
-  (eval-when-compile
-    (regexp-opt
-     '("module_declaration"
-       "interface_declaration"
-       "program_declaration"
-       "package_declaration"
-       "class_declaration"
-       "class_method"
-       "class_constructor_declaration"
-       "function_declaration"
-       "task_declaration")
-     'symbols)))
+(defconst verilog-ts--defun-type-re verilog-ts--forward-sexp-re)
 
-(defconst verilog-ts--function-task-regexp
+(defconst verilog-ts--function-task-re
   (eval-when-compile
     (regexp-opt
      '("task_declaration"
@@ -1820,7 +1865,7 @@ type.")
        "class_constructor_declaration")
      'symbols)))
 
-(defconst verilog-ts--function-task-class-regexp
+(defconst verilog-ts--function-task-class-re
   (eval-when-compile
     (regexp-opt
      '("class_declaration"
@@ -1830,11 +1875,25 @@ type.")
        "class_constructor_declaration")
      'symbols)))
 
+(defconst verilog-ts--goto-begin-down-re
+  (eval-when-compile
+    (regexp-opt
+     '("task_declaration"
+       "function_declaration"
+       "class_method" ; "class_method" includes constructor and extern prototypes
+       "class_constructor_declaration"
+       "seq_block")
+     'symbols)))
+
+(defvar-local verilog-ts--begin-level-down-parent-node nil)
+(defvar-local verilog-ts--defun-level-down-parent-node nil)
+
+
 (defun verilog-ts-find-function-task (&optional bwd)
   "Search for a Verilog function/task declaration or definition.
 
 If optional arg BWD is non-nil, search backwards."
-  (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts--function-task-regexp t bwd))
+  (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts--function-task-re t bwd))
 
 (defun verilog-ts-find-function-task-fwd ()
   "Search forward for a Verilog function/task declaration or definition."
@@ -1862,7 +1921,7 @@ If optional arg BWD is non-nil, search backwards."
   "Find closest declaration of a function/task/class.
 
 If optional arg BWD is non-nil, search backwards."
-  (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts--function-task-class-regexp t bwd))
+  (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts--function-task-class-re t bwd))
 
 (defun verilog-ts-find-function-task-class-fwd ()
   "Search forward for a Verilog function/task/class declaration."
@@ -1900,115 +1959,152 @@ If optional arg BWD is non-nil, search backwards."
   "Search backwards for a Verilog module/instance."
   (verilog-ts-find-module-instance :bwd))
 
-(defun verilog-ts-goto-begin-up ()
-  "Move point to start position of current begin."
-  (let* ((begin-node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "seq_block"))
-         (begin-pos (treesit-node-start begin-node)))
-    (when begin-pos
-      (goto-char begin-pos))))
+(defun verilog-ts--begin-level-down-fn (node)
+  "Aux function to search nodes in the subtree for `verilog-ts-goto-begin-down'."
+  (and (string-match verilog-ts--goto-begin-down-re (treesit-node-type node)) ; Match against begin-down regexp (default behavior)
+       (> (treesit-node-start node) (point))                                      ; Downwards navigating should always move point forward
+       (not (equal node verilog-ts--begin-level-down-parent-node))))              ; Exclude current node to avoid deadlocks while navigating down
 
 (defun verilog-ts-goto-begin-down ()
   "Move point to start position of next nested begin."
-  (let* ((begin-node (verilog-ts--node-has-child-recursive (verilog-ts--node-at-point) "seq_block"))
+  (let* ((parent-node (or (verilog-ts--node-has-parent-recursive (verilog-ts--highest-node-at-point) verilog-ts--goto-begin-down-re)
+                          (verilog-ts--highest-node-at-point)))
+         (node (when parent-node
+                 (setq verilog-ts--begin-level-down-parent-node parent-node)
+                 (treesit-search-subtree parent-node 'verilog-ts--begin-level-down-fn)))
+         (pos (treesit-node-start node)))
+    (if (and pos
+             (<= pos (treesit-node-end parent-node)))
+        (goto-char pos)
+      (when (called-interactively-p 'any)
+        (message "No more begin downwards")))))
+
+(defun verilog-ts-goto-begin-up ()
+  "Move point to start position of current begin."
+  (let* ((node-at-point (verilog-ts--node-at-point))
+         (begin-node (treesit-parent-until
+                      node-at-point
+                      (lambda (node)
+                        (and (string-match "\\_<seq_block\\_>" (treesit-node-type node))
+                             (not (equal (treesit-node-start node-at-point)
+                                         (treesit-node-start node)))))))
          (begin-pos (treesit-node-start begin-node)))
     (when begin-pos
       (goto-char begin-pos))))
 
-(defun verilog-ts-defun-level-up ()
-  "Move up one defun-level."
-  (let* ((node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) verilog-ts--defun-type-regexp))
-         (pos (treesit-node-start node)))
-    (when pos
-      (goto-char pos))))
+(defun verilog-ts--defun-level-down-fn (node)
+  "Aux function to search nodes in the subtree for `verilog-ts-defun-level-down'."
+  (and (string-match verilog-ts--defun-type-re (treesit-node-type node)) ; Match against defun regexp (default behavior)
+       (> (treesit-node-start node) (point))                                 ; Downwards navigating should always move point forward
+       (not (equal node verilog-ts--defun-level-down-parent-node))           ; Exclude current node to avoid deadlocks while navigating down
+       (not (member (treesit-node-type (verilog-ts--node-at-point :bound)) '("extern" "task" "function" "new"))))) ; Prevent navigation if point is already on a task/function
 
 (defun verilog-ts-defun-level-down ()
   "Move down one defun-level."
-  (let* ((node (verilog-ts--node-has-child-recursive (verilog-ts--node-at-point) verilog-ts--defun-type-regexp))
+  (interactive)
+  (let* ((parent-node (or (verilog-ts--node-has-parent-recursive (verilog-ts--highest-node-at-point) verilog-ts--defun-type-re)
+                          (verilog-ts--highest-node-at-point)))
+         (node (when parent-node
+                 (setq verilog-ts--defun-level-down-parent-node parent-node)
+                 (treesit-search-subtree parent-node 'verilog-ts--defun-level-down-fn)))
          (pos (treesit-node-start node)))
-    (when pos
-      (goto-char pos))))
+    (if (and pos
+             (<= pos (treesit-node-end parent-node)))
+        (goto-char pos)
+      (when (called-interactively-p 'any)
+        (message "No more defuns downwards")))))
+
+(defun verilog-ts-defun-level-up ()
+  "Move up one defun-level."
+  (interactive)
+  (let* ((cur-node (verilog-ts--highest-node-at-point))
+         (node (verilog-ts--node-has-parent-recursive cur-node verilog-ts--defun-type-re))
+         (pos (treesit-node-start node)))
+    (if pos
+        (goto-char pos)
+      (when (called-interactively-p 'any)
+        (message "No more defuns upwards")))))
 
 (defun verilog-ts-goto-next-error ()
   "Move point to next error in the parse tree."
   (interactive)
-  (treesit-search-forward-goto (verilog-ts--node-at-point) "ERROR" t))
+  (or (treesit-search-forward-goto (verilog-ts--node-at-point) "ERROR" t)
+      (when (called-interactively-p 'any)
+        (message "No more errors"))))
 
 (defun verilog-ts-goto-prev-error ()
   "Move point to previous error in the parse tree."
   (interactive)
-  (treesit-search-forward-goto (verilog-ts--node-at-point) "ERROR" t :bwd))
+  (or (treesit-search-forward-goto (verilog-ts--node-at-point) "ERROR" t :bwd)
+      (when (called-interactively-p 'any)
+        (message "No more errors"))))
 
 
 ;;;; Dwim
-(defconst verilog-ts-beg-of-defun-dwim-inside-module-re
+(defconst verilog-ts-beg-of-defun-dwim-re
   (eval-when-compile
     (regexp-opt
      '("module_declaration"
        "interface_declaration"
+       "package_declaration"
+       "program_declaration"
        "always_construct"
        "initial_construct"
        "final_construct"
-       "generate_region")
-     'symbols)))
-(defconst verilog-ts-beg-of-defun-dwim-outside-module-re
-  (eval-when-compile
-    (regexp-opt
-     '("function_declaration"
-       "task_declaration"
+       "generate_region"
        "class_declaration"
-       "package_declaration"
-       "program_declaration")
+       "function_declaration"
+       "task_declaration"
+       "class_method"
+       "class_constructor_declaration")
      'symbols)))
+
 
 (defun verilog-ts-beg-of-defun-dwim ()
-  "Context based search upwards.
-If in a module/interface look for instantiations.
-Otherwise look for functions/tasks."
+  "Move through beginning of defuns, defined by `verilog-ts-beg-of-defun-dwim-re'."
   (interactive)
-  (if (verilog-ts--inside-module-or-interface-p)
-      (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-inside-module-re t :bwd)
-    (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-outside-module-re t :bwd)))
+  (or (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-re t :bwd)
+      (when (called-interactively-p 'any)
+        (message "Couldn't find beginning of defun"))))
 
 (defun verilog-ts-end-of-defun-dwim ()
-  "Context based search upwards.
-If in a module/interface look for instantiations.
-Otherwise look for functions/tasks."
+  "Move through end of defuns, defined by `verilog-ts-beg-of-defun-dwim-re'."
   (interactive)
-  (if (verilog-ts--inside-module-or-interface-p)
-      (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-inside-module-re t)
-    (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-outside-module-re t)))
-
-(defun verilog-ts-nav-down-dwim ()
-  "Context based search downwards.
-If in a module/interface look for instantiations.
-Otherwise look for functions, tasks and classes."
-  (interactive)
-  (if (verilog-ts--inside-module-or-interface-p)
-      (verilog-ts-find-module-instance-fwd)
-    (verilog-ts-find-function-task-class-fwd)))
+  (or (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-beg-of-defun-dwim-re t)
+      (when (called-interactively-p 'any)
+        (message "Couldn't find end of defun"))))
 
 (defun verilog-ts-nav-up-dwim ()
-  "Context based search upwards.
-If in a module/interface look for instantiations.
-Otherwise look for functions, tasks and classes."
+  "Contextual based search upwards.
+
+- If inside a module or interface, navigate instances backwards.
+- Otherwise if in a begin/end block move to corresponding begin.
+- In any other case move one defun level up."
   (interactive)
   (if (verilog-ts--inside-module-or-interface-p)
       (verilog-ts-find-module-instance-bwd)
-    (verilog-ts-find-function-task-class-bwd)))
+    ;; Else
+    (if (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "seq_block")
+        (verilog-ts-goto-begin-up)
+      (call-interactively #'verilog-ts-defun-level-up))))
 
-(defun verilog-ts-nav-next-dwim ()
-  "Context based search next.
-If in a parenthesis, go to closing parenthesis (Elisp like).
-Otherwise move to next paragraph."
+(defun verilog-ts-nav-down-dwim ()
+  "Contextual based search downwards.
+
+- If inside a module or interface, navigate instances forward.
+- Otherwise try to find nested begin.
+- In any other case move one defun level down."
   (interactive)
-  (if (or (member (following-char) '(?\( ?\[ ?\{ ?\) ?\] ?\}))
-          (member (preceding-char) '(?\) ?\] ?\}))
-          (string= (symbol-at-point) "begin"))
-      (verilog-ts-forward-sexp)
-    (forward-paragraph)))
+  (if (verilog-ts--inside-module-or-interface-p)
+      (verilog-ts-find-module-instance-fwd)
+    ;; Else
+    (if (verilog-ts--node-has-parent-recursive (verilog-ts--highest-node-at-point) verilog-ts--goto-begin-down-re)
+        (verilog-ts-goto-begin-down)
+      (verilog-ts-defun-level-down))))
 
 (defun verilog-ts-nav-prev-dwim ()
   "Context based search previous.
+
 If in a parenthesis, go to opening parenthesis (Elisp like).
 Otherwise move to previous paragraph."
   (interactive)
@@ -2018,6 +2114,17 @@ Otherwise move to previous paragraph."
       (verilog-ts-backward-sexp)
     (backward-paragraph)))
 
+(defun verilog-ts-nav-next-dwim ()
+  "Context based search next.
+
+If in a parenthesis, go to closing parenthesis (Elisp like).
+Otherwise move to next paragraph."
+  (interactive)
+  (if (or (member (following-char) '(?\( ?\[ ?\{ ?\) ?\] ?\}))
+          (member (preceding-char) '(?\) ?\] ?\}))
+          (string= (symbol-at-point) "begin"))
+      (verilog-ts-forward-sexp)
+    (forward-paragraph)))
 
 
 ;;; Prettify
@@ -2492,6 +2599,7 @@ and the linker to be installed and on PATH."
   :doc "Keymap for SystemVerilog language with tree-sitter"
   :parent verilog-mode-map
   "TAB"     #'indent-for-tab-command
+  "C-M-h"   #'mark-defun ; Unmap `verilog-mark-defun' from `verilog-mode'
   "C-M-f"   #'verilog-ts-forward-sexp
   "C-M-b"   #'verilog-ts-backward-sexp
   "C-M-a"   #'verilog-ts-beg-of-defun-dwim
@@ -2546,7 +2654,7 @@ and the linker to be installed and on PATH."
     (setq-local comment-indent-function nil)
     (setq-local treesit-simple-indent-rules verilog-ts--treesit-indent-rules)
     ;; Navigation.
-    (setq-local treesit-defun-type-regexp verilog-ts--defun-type-regexp)
+    (setq-local treesit-defun-type-regexp verilog-ts--defun-type-re)
     ;; Imenu.
     (verilog-ts-imenu-setup)
     ;; Which-func
