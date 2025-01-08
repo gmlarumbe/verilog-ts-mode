@@ -22,7 +22,7 @@ module myassert(input 	     clk,
    end // else: !assert property(myproperty)
    if (a) begin
       b;
-      c;
+ c;
    end // if (a)
    else begin
       o;

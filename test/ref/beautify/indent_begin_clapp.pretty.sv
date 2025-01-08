@@ -33,9 +33,9 @@ always @E
   begin
  end
 
-forever @E
+forever @ E
  begin
-  end
+ 	  end
 
 endmodule
 

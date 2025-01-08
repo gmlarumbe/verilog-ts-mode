@@ -34,8 +34,8 @@ module x;
         end
 
     forever @E
-        begin
-    end
+    begin
+        end
 
 endmodule
 
