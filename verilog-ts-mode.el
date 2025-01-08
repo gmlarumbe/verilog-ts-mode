@@ -43,8 +43,8 @@
 ;;; Code:
 
 ;;; Requirements
-
 (require 'treesit)
+(require 'imenu)
 (require 'verilog-mode)
 
 (declare-function treesit-parser-create "treesit.c")
@@ -1549,9 +1549,11 @@ SystemVerilog parser."
          (name (when ts-node
                  (or (verilog-ts--node-identifier-name ts-node)
                      "Anonymous")))
+         (pos (treesit-node-start ts-node))
          (marker (when ts-node
-                   (set-marker (make-marker)
-                               (treesit-node-start ts-node)))))
+                   (if imenu-use-markers
+                       (set-marker (make-marker) pos)
+                     pos))))
     (cond
      ;; Root node
      ((null ts-node)
@@ -1573,7 +1575,7 @@ SystemVerilog parser."
     (mapc
      (lambda (elm)
        (if (and (listp elm) (listp (cdr elm)) (listp (cddr elm)) ; Basic checks due to custom imenu entry format for grouping
-                (markerp (cadr elm))   ; Element can be grouped because it was added ...
+                (or (numberp (cadr elm)) (markerp (cadr elm)))   ; Element can be grouped because it was added ...
                 (stringp (caddr elm))) ; ... a third field, indicating tree-sitter type
            (let ((type (caddr elm))
                  (entry (cons (car elm) (cadr elm))))
@@ -1641,9 +1643,11 @@ SystemVerilog parser."
          (name (when ts-node
                  (or (verilog-ts--node-identifier-name ts-node)
                      "Anonymous")))
+         (pos (treesit-node-start ts-node))
          (marker (when ts-node
-                   (set-marker (make-marker)
-                               (treesit-node-start ts-node)))))
+                   (if imenu-use-markers
+                       (set-marker (make-marker) pos)
+                     pos))))
     (cond
      ;; Root node
      ((null ts-node)
@@ -1702,21 +1706,21 @@ to SystemVerilog parser."
   (pcase verilog-ts-imenu-style
     ('simple
      (setq-local treesit-simple-imenu-settings
-                 `(("Module" "\\`entity_declaration\\'" nil nil)
-                   ("Interface" "\\`interface_declaration\\'" nil nil)
-                   ("Program" "\\`program_declaration\\'" nil nil)
-                   ("Package" "\\`package_declaration\\'" nil nil)
-                   ("Class" "\\`class_declaration\\'" nil nil)
-                   ("Function" "\\`\\(function\\|class_constructor\\)_declaration\\'" nil nil)
-                   ("Task" "\\`task_declaration\\'" nil nil)
-                   ("Function prototype" "\\`\\(function\\|class_constructor\\)_prototype\\'" nil nil)
-                   ("Task prototype" "\\`task_prototype\\'" nil nil)
-                   ("Property" "\\`class_property\\'" nil nil)
-                   ("Always" "\\`always_construct\\'" nil nil)
-                   ("Initial" "\\`initial_construct\\'" nil nil)
-                   ("Final" "\\`final_construct\\'" nil nil)
-                   ("Generate" "\\`generate_region\\'" nil nil)
-                   ("Instance" "\\`\\(module\\|interface\\)_instantiation\\'" nil)))
+                 `(("Module" "\\`entity_declaration\\'")
+                   ("Interface" "\\`interface_declaration\\'")
+                   ("Program" "\\`program_declaration\\'")
+                   ("Package" "\\`package_declaration\\'")
+                   ("Class" "\\`class_declaration\\'")
+                   ("Function" "\\`\\(function\\|class_constructor\\)_declaration\\'")
+                   ("Task" "\\`task_declaration\\'")
+                   ("Function prototype" "\\`\\(function\\|class_constructor\\)_prototype\\'")
+                   ("Task prototype" "\\`task_prototype\\'")
+                   ("Property" "\\`class_property\\'")
+                   ("Always" "\\`always_construct\\'")
+                   ("Initial" "\\`initial_construct\\'")
+                   ("Final" "\\`final_construct\\'")
+                   ("Generate" "\\`generate_region\\'")
+                   ("Instance" "\\`\\(module\\|interface\\)_instantiation\\'")))
      (setq-local treesit-defun-name-function #'verilog-ts--node-identifier-name))
     ('tree
      (setq-local imenu-create-index-function #'verilog-ts-imenu-create-index-tree))
