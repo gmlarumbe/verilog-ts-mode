@@ -1338,7 +1338,7 @@ virtual class uvm_component extends uvm_report_object;
   // By default, all children are printed. However, this bit allows a parent
   // component to disable the printing of specific children.
 
-  bit 			      print_enabled 		  = 1;
+  bit print_enabled = 1;
 
   // @uvm-ieee 1800.2-2020 auto 13.1.2.3
   extern virtual function void do_execute_op( uvm_field_op op );
@@ -1348,7 +1348,7 @@ virtual class uvm_component extends uvm_report_object;
   // Specifies the <uvm_tr_database> object to use for <begin_tr>
   // and other methods in the <Recording Interface>.
   // Default is <uvm_coreservice_t::get_default_tr_database>.
-  uvm_tr_database 	      tr_database;
+  uvm_tr_database tr_database;
 
   // @uvm-ieee 1800.2-2020 auto 13.1.7.12
   extern virtual function uvm_tr_database get_tr_database();
@@ -1372,16 +1372,16 @@ virtual class uvm_component extends uvm_report_object;
   // tions are freely available via the open-source license.
   //----------------------------------------------------------------------------
 
-  protected uvm_domain 	      m_domain; 	       // set_domain stores our domain handle
+  protected uvm_domain 	  m_domain;    // set_domain stores our domain handle
 
-  /*protected*/ uvm_phase     m_phase_imps[uvm_phase]; // functors to override ovm_root defaults
+  /*protected*/ uvm_phase m_phase_imps[uvm_phase];    // functors to override ovm_root defaults
 
   //TND review protected, provide read-only accessor.
-  uvm_phase 		      m_current_phase; 	       // the most recently executed phase
-  protected process 	      m_phase_process;
+  uvm_phase 		  m_current_phase;            // the most recently executed phase
+  protected process 	  m_phase_process;
 
-  /*protected*/ bit 	      m_build_done;
-  /*protected*/ int 	      m_phasing_active;
+  /*protected*/ bit 	  m_build_done;
+  /*protected*/ int 	  m_phasing_active;
 
   extern                   function void set_local(uvm_resource_base rsrc) ;
 
@@ -1404,21 +1404,21 @@ virtual class uvm_component extends uvm_report_object;
   extern virtual function uvm_object create (string name="");
   extern virtual function uvm_object clone  ();
 
-  local uvm_tr_stream 	      m_streams[string][string];
-  local uvm_recorder 	      m_tr_h[uvm_transaction];
+  local uvm_tr_stream m_streams[string][string];
+  local uvm_recorder  m_tr_h[uvm_transaction];
   extern protected function int m_begin_tr (uvm_transaction tr,
                                                 int parent_handle=0,
                                                 string stream_name="main", string label="",
                                                 string desc="", time begin_time=0);
 
-  string 		      m_name;
+  string 		   m_name;
 
   typedef uvm_abstract_component_registry#(uvm_component, "uvm_component") type_id;
   `uvm_type_name_decl("uvm_component")
 
-  protected uvm_event_pool    event_pool;
+  protected uvm_event_pool event_pool;
 
-  int unsigned 		      recording_detail 		  = UVM_NONE;
+  int unsigned 		   recording_detail = UVM_NONE;
 
   // @uvm-ieee 1800.2-2020 auto 13.1.6.14
   extern virtual function bit get_recording_enabled();
@@ -1449,13 +1449,13 @@ virtual class uvm_component extends uvm_report_object;
   extern function void m_apply_verbosity_settings(uvm_phase phase);
 
 
-  uvm_cmdline_set_verbosity   m_verbosity_settings[$];
+  uvm_cmdline_set_verbosity m_verbosity_settings[$];
 
   // does the pre abort callback hierarchically
   extern /*local*/ function void m_do_pre_abort;
 
   // produce message for unsupported types from apply_config_settings
-  uvm_resource_base 	      m_unsupported_resource_base = null;
+  uvm_resource_base m_unsupported_resource_base = null;
   extern function void m_unsupported_set_local(uvm_resource_base rsrc);
 
 endclass : uvm_component
