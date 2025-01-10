@@ -51,6 +51,14 @@
     (,(file-name-concat verilog-ts-mode-test-files-common-dir "axi_test.sv") 883 936 954 1074 1245 1309 1328 1356 1381 1433 1471 1490 2337 2456 2337 26583 26589 26699 27501 27586 86894)
     (,(file-name-concat verilog-ts-mode-test-files-common-dir "uvm_component.svh") 1261 1357 1883 2703 48756 59192 59464 59551 59874 60416 60417 60436 100840)))
 
+(defconst verilog-ts-mode-test-navigation-forward-sexp-file-and-pos
+  `((,(file-name-concat verilog-ts-mode-test-files-common-dir "uvm_component.svh") 1262 1828 1836 1882 2563 3194 58660 59107 59373 59546 59869 60188 61902 62055 62026 62190)
+    (,(file-name-concat verilog-ts-mode-test-files-common-dir "axi_test.sv") 936 944 1019 1222 1314 1476 1813 2071 6040 77761 78095 79664 79875 79937 82906))) ; TODO: Still don't work well
+
+(defconst verilog-ts-mode-test-navigation-backward-sexp-file-and-pos
+  `((,(file-name-concat verilog-ts-mode-test-files-common-dir "uvm_component.svh") 100828 100667 99820 99811 99372 77463 76144 58660 58657)
+    (,(file-name-concat verilog-ts-mode-test-files-common-dir "axi_test.sv") 86884 86880 86857 86849 86839 86827 82891 82885 82877 79279 77761 77734 77712 77704 77656 77403 73911 61372 59621 77761 77734)))
+
 
 (defun verilog-ts-mode-test-navigation-gen-expected-files ()
   ;; Instances fwd
@@ -144,6 +152,31 @@
                                    :fn #'test-hdl-pos-list-fn
                                    :args `(:mode verilog-ts-mode
                                            :fn verilog-ts-defun-level-down
+                                           :pos-list ,pos-list))))
+
+  ;; Forward sexp
+  (dolist (file-and-pos verilog-ts-mode-test-navigation-forward-sexp-file-and-pos)
+    (let ((file (car file-and-pos))
+          (pos-list (cdr file-and-pos)))
+      (test-hdl-gen-expected-files :file-list `(,file)
+                                   :dest-dir verilog-ts-mode-test-ref-dir-navigation
+                                   :out-file-ext "fwd.sexp.el"
+                                   :process-fn 'eval
+                                   :fn #'test-hdl-pos-list-fn
+                                   :args `(:mode verilog-ts-mode
+                                           :fn verilog-ts-forward-sexp
+                                           :pos-list ,pos-list))))
+  ;; Backward sexp
+  (dolist (file-and-pos verilog-ts-mode-test-navigation-backward-sexp-file-and-pos)
+    (let ((file (car file-and-pos))
+          (pos-list (cdr file-and-pos)))
+      (test-hdl-gen-expected-files :file-list `(,file)
+                                   :dest-dir verilog-ts-mode-test-ref-dir-navigation
+                                   :out-file-ext "bwd.sexp.el"
+                                   :process-fn 'eval
+                                   :fn #'test-hdl-pos-list-fn
+                                   :args `(:mode verilog-ts-mode
+                                           :fn verilog-ts-backward-sexp
                                            :pos-list ,pos-list)))))
 
 
@@ -257,6 +290,35 @@
                                                                    :fn verilog-ts-defun-level-down
                                                                    :pos-list ,pos-list))
                                     (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "defun.down.el")))))))
+
+
+(ert-deftest navigation::forward-sexp ()
+  (dolist (file-and-pos verilog-ts-mode-test-navigation-forward-sexp-file-and-pos)
+    (let ((file (car file-and-pos))
+          (pos-list (cdr file-and-pos)))
+      (should (test-hdl-files-equal (test-hdl-process-file :test-file file
+                                                           :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-navigation (test-hdl-basename file "fwd.sexp.el"))
+                                                           :process-fn 'eval
+                                                           :fn #'test-hdl-pos-list-fn
+                                                           :args `(:mode verilog-ts-mode
+                                                                   :fn verilog-ts-forward-sexp
+                                                                   :pos-list ,pos-list))
+                                    (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "fwd.sexp.el")))))))
+
+
+(ert-deftest navigation::backward-sexp ()
+  (dolist (file-and-pos verilog-ts-mode-test-navigation-backward-sexp-file-and-pos)
+    (let ((file (car file-and-pos))
+          (pos-list (cdr file-and-pos)))
+      (should (test-hdl-files-equal (test-hdl-process-file :test-file file
+                                                           :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-navigation (test-hdl-basename file "bwd.sexp.el"))
+                                                           :process-fn 'eval
+                                                           :fn #'test-hdl-pos-list-fn
+                                                           :args `(:mode verilog-ts-mode
+                                                                   :fn verilog-ts-backward-sexp
+                                                                   :pos-list ,pos-list))
+                                    (file-name-concat verilog-ts-mode-test-ref-dir-navigation (test-hdl-basename file "bwd.sexp.el")))))))
+
 
 
 

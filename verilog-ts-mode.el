@@ -1838,7 +1838,11 @@ With `prefix-arg', move ARG expressions."
   (interactive "p")
   (let* ((node (verilog-ts--node-at-point))
          (node-type (treesit-node-type node))
-         (highest-node (verilog-ts--highest-node-at-point))
+         (highest-node (treesit-parent-while ; Same as `verilog-ts--highest-node-at-point' but ignoring package_item and class_item
+                        node
+                        (lambda (loop-node)
+                          (and (eq (treesit-node-start node) (treesit-node-start loop-node))
+                               (not (string-match "\\_<\\(package\\|class\\)_item\\_>" (treesit-node-type loop-node)))))))
          (highest-node-type (treesit-node-type highest-node)))
     (cond (;; Defuns
            (or (string-match verilog-ts-defun-re highest-node-type)
