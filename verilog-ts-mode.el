@@ -108,6 +108,11 @@ Alignment is performed after execution of `verilog-ts-pretty-declarations' and
   :group 'verilog-ts
   :type 'boolean)
 
+(defcustom verilog-ts-beautify-instance-extra nil
+  "Set to non-nil to perform extra formatting on instances."
+  :type 'boolean
+  :group 'verilog-ts)
+
 (defcustom verilog-ts-linter-enable t
   "Non-nil means enable tree-sitter based linting."
   :group 'verilog-ts
@@ -2422,36 +2427,49 @@ parameter_port_declaration might be shadowed by parameter_declaration nodes."
         (verilog-ts-pretty-expr--goto-node-end))))) ; Move to next expression
 
 ;;; Beautify
+(defun verilog-ts-beautify-block-at-point--align (thing)
+  "Align THING of current module at point (ports/parameters)."
+  (let ((re-open-par          "\\(\\s-*\\)(")                 ; Port opening parenthesis
+        (re-blank-open-par    "\\(\\s-*\\)(\\(\\s-*\\)")      ; Set 1 blank after port opening parenthesis
+        (re-blank-closing-par "\\(\\s-*\\))")                 ; Set 1 blank before port closing parenthesis
+        (re-port-comma        "\\(\\s-*\\),")                 ; Remove blanks between closing parenthesis and port comma
+        (re-comment           "\\(\\(\\,\\|)\\)\\s-*\\)\/\/") ; Leave 1 blank before port inline comments
+        (node-type (cond ((eq thing 'parameters) "list_of_parameter_value_assignments")
+                         ((eq thing 'ports) "list_of_port_connections")
+                         (t (error "Invalid thing to align"))))
+        (beg (make-marker))
+        (end (make-marker))
+        (comment-end (make-marker))
+        node)
+    (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `indent-region'
+    (when (setq node (verilog-ts--node-has-child-recursive node node-type))
+      (set-marker beg (treesit-node-start node))
+      (set-marker end (treesit-node-end node))
+      (set-marker comment-end (save-excursion
+                                (goto-char end)
+                                (line-end-position)))
+      (align-regexp beg end re-open-par 1 1 nil)
+      (when verilog-ts-beautify-instance-extra
+        (align-regexp beg end re-blank-open-par 2 1 t)
+        (align-regexp beg end re-blank-closing-par 1 1 t)
+        (align-regexp beg end re-port-comma 1 0 t)
+        (align-regexp beg comment-end re-comment 1 2 nil)))))
+
 (defun verilog-ts-beautify-block-at-point ()
   "Beautify/indent block at point.
 If block is an instance, also align parameters and ports."
   (interactive)
   (let ((node (verilog-ts-block-at-point))
-        (start (make-marker))
-        (end (make-marker))
         type name)
     (unless node
       (user-error "Not inside a block"))
     (save-excursion
-      (set-marker start (treesit-node-start node))
-      (set-marker end (treesit-node-end node))
       (setq type (treesit-node-type node))
       (setq name (verilog-ts--node-identifier-name node))
-      (indent-region start end)
-      ;; Instance: also align ports and params
+      (indent-region (treesit-node-start node) (treesit-node-end node))
       (when (string-match verilog-ts-instance-re type)
-        (let ((re "\\(\\s-*\\)(")
-              params-node ports-node)
-          (goto-char start)
-          (skip-chars-forward " \t")
-          (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `indent-region'
-          (when (setq params-node (verilog-ts--node-has-child-recursive node "list_of_parameter_value_assignments"))
-            (align-regexp (treesit-node-start params-node) (treesit-node-end params-node) re 1 1 nil))
-          (goto-char start)
-          (skip-chars-forward " \t")
-          (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `align-regexp' for parameter list
-          (when (setq ports-node (verilog-ts--node-has-child-recursive node "list_of_port_connections"))
-            (align-regexp (treesit-node-start ports-node) (treesit-node-end ports-node) re 1 1 nil)))))
+        (verilog-ts-beautify-block-at-point--align 'parameters)
+        (verilog-ts-beautify-block-at-point--align 'ports)))
     (message "%s : %s" type name)))
 
 (defun verilog-ts-beautify-instances-current-buffer ()
