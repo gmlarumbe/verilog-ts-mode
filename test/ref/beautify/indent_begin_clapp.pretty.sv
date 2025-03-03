@@ -17,13 +17,15 @@ initial forever
   begin
 end
 
-foreach(1)
+initial begin
+foreach(x[i])
 begin
   end
 
 do
  begin
  end while (i);
+end
 
 initial @a.b
   begin
@@ -33,9 +35,10 @@ always @E
   begin
  end
 
-forever @ E
+initial
+forever @E
  begin
- 	  end
+  end
 
 endmodule
 

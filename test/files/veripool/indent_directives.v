@@ -1,11 +1,11 @@
-module foo;
+module foo();
 `ifdef LABEL_A
    CHIP CPU (
              .clkin(clkin),
  `ifdef LABEL_B
              .bclko(bclko),
  `endif
-             .cmode(cmode),
+             .cmode(cmode)
              );
    input sysclk;
  `ifdef LABEL_B
@@ -13,16 +13,16 @@ module foo;
  `endif
    input cmode;
 `endif
-   
+
    // instead of:
-   
+
 `ifdef LABEL_A
    CHIP CPU (
              .clkin(clkin),
  `ifdef LABEL_B
              .bclko(bclko),
  `endif
-             .cmode(cmode),
+             .cmode(cmode)
              );
    input sysclk;
  `ifdef LABEL_B
@@ -30,33 +30,33 @@ module foo;
  `endif
    input cmode;
 `endif //  `ifdef LABEL_A
-   reg 	 a,b;
+   reg   a,b;
 `ifdef A
    always @(a) begin
       b = a; // asfSDfsdfsasa
       b = a; // asfSDfsdfsasa
       b = a; // asfSDfsdfsasa      //
-      b = a; // asfSDfsdfsasa      //       
       b = a; // asfSDfsdfsasa      //
-      b = a; // asfSDfsdfsasa      //       
-      b = a; // asfSDfsdfsasa      //       
-      b = a; // asfSDfsdfsasa      //       
-      b = a; // asfSDfsdfsasa      //       
+      b = a; // asfSDfsdfsasa      //
+      b = a; // asfSDfsdfsasa      //
+      b = a; // asfSDfsdfsasa      //
+      b = a; // asfSDfsdfsasa      //
+      b = a; // asfSDfsdfsasa      //
    end
 `elsif B
    always @(b) begin
       a = b; // asfSDfsdfsasa
       a = b; // asfSDfsdfsasa
-      a = b; // asfSDfsdfsasa      //       
+      a = b; // asfSDfsdfsasa      //
       a = b; // asfSDfsdfsasa
       a = b; // asfSDfsdfsasa
-      a = b; // asfSDfsdfsasa      //       
+      a = b; // asfSDfsdfsasa      //
       a = b; // asfSDfsdfsasa
       a = b; // asfSDfsdfsasa
-      a = b; // asfSDfsdfsasa      //       
+      a = b; // asfSDfsdfsasa      //
       a = b; // asfSDfsdfsasa
       a = b; // asfSDfsdfsasa
-      a = b; // asfSDfsdfsasa      //       
+      a = b; // asfSDfsdfsasa      //
    end
 `else // !`elsif B
    always @(a or b) begin
@@ -64,6 +64,6 @@ module foo;
       b <= a;
    end
 `endif // !`elsif B
-   
-   
-endmodule // foo
+
+
+endmodule : foo

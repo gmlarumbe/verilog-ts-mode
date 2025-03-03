@@ -1,4 +1,4 @@
-module foo;
+module foo();
     input a,b;
 
     always @(a) begin
@@ -6,7 +6,7 @@ module foo;
     end
 endmodule // foo
 
-module bar;
+module bar();
     // 
     input a,b;
 

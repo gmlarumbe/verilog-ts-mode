@@ -1,4 +1,4 @@
-module test;
+module test();
     input  i_blc, I_cdef;
     reg [par_a -1:0] b,c;
 
@@ -12,4 +12,4 @@ module test;
             c=b;
         end
     end
-endmodule // test
+endmodule : test

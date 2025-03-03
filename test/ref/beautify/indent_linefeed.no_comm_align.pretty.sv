@@ -1,15 +1,15 @@
-module foo;
+module foo();
    input a,b;
-   
+
    always @(a) begin
       b <= #10 ~ a;
    end
 endmodule // foo
 
-module bar;
+module bar();
    // 
    input a,b;
-   
+
    always @(a) begin // 
       b <= #10 ~  a;
 

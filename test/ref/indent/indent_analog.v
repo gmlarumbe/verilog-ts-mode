@@ -5,4 +5,4 @@ module mymodule();
     analog begin
         // contents of module here
     end
-    endmodule
+endmodule

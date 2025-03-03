@@ -1009,12 +1009,10 @@ Matches if point is at a blank line."
   (unless node
     t))
 
-(defun verilog-ts--matcher-continued-string (node &rest _)
+(defun verilog-ts--matcher-continued-string (&rest _)
   "A tree-sitter simple indent matcher for NODE.
 Matches if point is at a continued quoted string."
-  (let ((node-at-point (verilog-ts--node-at-point))) ; There is no node-at-bol in this case
-    (and (not node)
-         (equal (treesit-node-type (treesit-node-parent node-at-point)) "quoted_string"))))
+  (equal (treesit-node-type (treesit-node-parent (verilog-ts--node-at-point))) "quoted_string"))
 
 (defun verilog-ts--matcher-uvm-field-macro (&rest _)
   "A tree-sitter simple indent matcher.
@@ -1323,8 +1321,7 @@ Indent package imports on ANSI headers, used in conjunction with
 
 (defun verilog-ts--anchor-continued-string (&rest _)
   "A tree-sitter simple indent anchor."
-  (let* ((node-at-point (verilog-ts--node-at-point))
-         (indent-node (verilog-ts--node-has-parent-recursive node-at-point "quoted_string")))
+  (let ((indent-node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) "quoted_string")))
     (save-excursion
       (goto-char (treesit-node-start indent-node))
       (1+ (point))))) ; Take " into account

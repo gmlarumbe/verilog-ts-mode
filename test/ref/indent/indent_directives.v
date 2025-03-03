@@ -1,11 +1,11 @@
-module foo;
+module foo();
     `ifdef LABEL_A
     CHIP CPU (
         .clkin(clkin),
         `ifdef LABEL_B
         .bclko(bclko),
         `endif
-        .cmode(cmode),
+        .cmode(cmode)
     );
     input sysclk;
     `ifdef LABEL_B
@@ -22,7 +22,7 @@ module foo;
         `ifdef LABEL_B
         .bclko(bclko),
         `endif
-        .cmode(cmode),
+        .cmode(cmode)
     );
     input sysclk;
     `ifdef LABEL_B
@@ -66,4 +66,4 @@ module foo;
     `endif // !`elsif B
 
 
-endmodule // foo
+endmodule : foo
