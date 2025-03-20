@@ -678,8 +678,7 @@ obj.method();"
             '("include" "define" "ifdef" "ifndef" "timescale" "default_nettype"
               "elsif" "undef" "resetall" "undefineall" "endif" "else"
               "unconnected_drive" "celldefine" "endcelldefine" "end_keywords"
-              "unconnected_drive" "line" "begin_keywords" "pragma" "__FILE__"
-              "__LINE__"))))
+              "line" "begin_keywords" "pragma" "__FILE__" "__LINE__"))))
 
 
 ;;;; Functions
