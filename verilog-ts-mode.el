@@ -5,7 +5,7 @@
 ;; Author: Gonzalo Larumbe <gonzalomlarumbe@gmail.com>
 ;; URL: https://github.com/gmlarumbe/verilog-ts-mode
 ;; Version: 0.3.0
-;; Keywords: Verilog, IDE, Tools
+;; Keywords: SystemVerilog, IDE, Tools
 ;; Package-Requires: ((emacs "29.1") (verilog-mode "2024.3.1.121933719"))
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -2564,14 +2564,14 @@ Injection if appropriate if INJECT is non-nil."
 ;;;; Setup
 ;;;###autoload
 (defun verilog-ts-install-grammar ()
-  "Install Verilog tree-sitter grammar.
+  "Install SystemVerilog tree-sitter grammar.
 
 This command requires Git, a C compiler and (sometimes) a C++ compiler,
 and the linker to be installed and on PATH."
   (interactive)
   (let ((url "https://github.com/gmlarumbe/tree-sitter-systemverilog"))
-    (add-to-list 'treesit-language-source-alist `(verilog ,url))
-    (treesit-install-language-grammar 'verilog)))
+    (add-to-list 'treesit-language-source-alist `(systemverilog ,url))
+    (treesit-install-language-grammar 'systemverilog)))
 
 
 ;;;; Features
@@ -2618,6 +2618,9 @@ and the linker to be installed and on PATH."
 (define-derived-mode verilog-ts-mode verilog-mode "SystemVerilog"
   "Major mode for editing SystemVerilog files, using tree-sitter library."
   :syntax-table verilog-ts-mode-syntax-table
+  ;; Emacs convention expects 'verilog' instead of 'systemverilog' for `verilog-ts-mode':
+  ;;  - https://www.gnu.org/software/emacs/manual/html_node/elisp/Language-Grammar.html
+  (add-to-list 'treesit-load-name-override-list '(verilog "libtree-sitter-systemverilog" "tree_sitter_systemverilog"))
   ;; Treesit
   (when (treesit-ready-p 'verilog)
     (treesit-parser-create 'verilog)
