@@ -11,18 +11,18 @@ module m;
         a == b;
         a != b;
         a === b;
-            a !== b;
-            a ==? b;
-            a !=? b;
-            a <-> b;
-            a -> b;
-            a ->> b;
-            a |-> b;
-            a |=> b;
-            a #-# b;
-            a #=# b;
-            a := b;
-            a :/ b;
+        a !== b;
+        a ==? b;
+        a !=? b;
+        a <-> b;
+        a -> b;
+        a ->> b;
+        a |-> b;
+        a |=> b;
+        a #-# b;
+        a #=# b;
+        a := b;
+        a :/ b;
     end
 
     // bug1169

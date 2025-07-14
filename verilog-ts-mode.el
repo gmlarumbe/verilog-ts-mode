@@ -798,6 +798,11 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
        (simple_identifier) @font-lock-type-face))
      (data_type
       (class_type
+       (simple_identifier) @font-lock-type-face
+       (parameter_value_assignment)))
+     (data_type
+      (class_type
+       (simple_identifier) @verilog-ts-font-lock-dot-name-face
        (simple_identifier) @font-lock-type-face))
      (net_port_header ; port with user net type
       (net_port_type
@@ -943,7 +948,10 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
      (package_scope
       (simple_identifier) @verilog-ts-font-lock-dot-name-face)
      (method_call
-      (select "." (simple_identifier) @verilog-ts-font-lock-dot-name-face))
+      (primary
+       (select
+        (simple_identifier) @verilog-ts-font-lock-dot-name-face))
+      (method_call_body))
      ;; Attributes
      (["(*" "*)"] @font-lock-constant-face)
      (attribute_instance
