@@ -312,6 +312,69 @@ Node must be of type `verilog-ts-instance-re'.  Otherwise return nil."
                (string= (treesit-node-text (treesit-node-child node 1) :no-prop) "class"))
       (treesit-node-text (treesit-node-child-by-field-name node "type_name") :no-prop))))
 
+(defun verilog-ts--node-module-ports (node)
+  "Return current NODE list of ports if a module or interface."
+  (unless (and node (string-match "\\_<\\(module\\|interface\\)_declaration\\_>" (treesit-node-type node)))
+    (error "Wrong node type: %s" (treesit-node-type node)))
+  (let (header-node port-nodes)
+    (cond (;; ANSI declaration
+           (setq header-node (treesit-search-subtree node "\\_<module_ansi_header\\_>"))
+           (setq port-nodes (mapcar #'car (cdr (treesit-induce-sparse-tree header-node "\\_<ansi_port_declaration\\_>"))))
+           (mapcar (lambda (port-node)
+                     `(,(treesit-node-text (treesit-node-child-by-field-name port-node "port_name") :no-props)
+                       :data-type ,(or (treesit-node-text (treesit-search-subtree port-node "\\_<\\(net\\|variable\\)_port_type\\_>") :no-props)
+                                       (treesit-node-text (treesit-search-subtree port-node "\\_<interface_port_header\\_>") :no-props))
+                       :direction ,(treesit-node-text (treesit-search-subtree port-node "\\_<port_direction\\_>") :no-props)
+                       :packed-dim ,(when (treesit-search-subtree port-node "\\_<packed_dimension\\_>")
+                                      (mapconcat (lambda (node)
+                                                   (treesit-node-text node :no-props))
+                                                 (mapcar #'car (cdr (treesit-induce-sparse-tree port-node "\\_<packed_dimension\\_>")))))
+                       :unpacked-dim ,(when (treesit-search-subtree port-node "\\_<unpacked_dimension\\_>")
+                                        (mapconcat (lambda (node)
+                                                     (treesit-node-text node :no-props))
+                                                   (mapcar #'car (cdr (treesit-induce-sparse-tree port-node "\\_<unpacked_dimension\\_>")))))))
+                   port-nodes))
+          (;; non-ANSI declaration -> port_declaration
+           (treesit-search-subtree node "\\_<module_nonansi_header\\_>")
+           (setq port-nodes (mapcar #'car (cdr (treesit-induce-sparse-tree node "\\_<port_declaration\\_>"))))
+           (mapcar (lambda (port-node)
+                     `(,(treesit-node-text (treesit-search-subtree (treesit-search-subtree port-node "\\_<list_of_port_identifiers\\_>") "\\_<simple_identifier\\_>") :no-props)
+                       :data-type ,(treesit-node-text (treesit-search-subtree port-node "\\_<\\(net\\|variable\\)_port_type\\_>") :no-props)
+                       :direction ,(treesit-node-text (treesit-search-subtree port-node "\\_<\\(input\\|output\\|inout\\|ref\\)\\_>" nil t) :no-props)
+                       :packed-dim ,(when (treesit-search-subtree port-node "\\_<packed_dimension\\_>")
+                                      (mapconcat (lambda (node)
+                                                   (treesit-node-text node :no-props))
+                                                 (mapcar #'car (cdr (treesit-induce-sparse-tree port-node "\\_<packed_dimension\\_>")))))
+                       :unpacked-dim ,(when (treesit-search-subtree port-node "\\_<unpacked_dimension\\_>")
+                                        (mapconcat (lambda (node)
+                                                     (treesit-node-text node :no-props))
+                                                   (mapcar #'car (cdr (treesit-induce-sparse-tree port-node "\\_<unpacked_dimension\\_>")))))))
+                   port-nodes))
+          (t
+           (error "Unexpected error")))))
+
+(defun verilog-ts--node-module-parameters (node)
+  "Return current NODE list of parameters if a module or interface."
+  (unless (and node (string-match "\\_<\\(module\\|interface\\)_declaration\\_>" (treesit-node-type node)))
+    (error "Wrong node type: %s" (treesit-node-type node)))
+  (let (header-node param-nodes temp-node)
+    (when (setq header-node (treesit-search-subtree node "\\_<module_ansi_header\\_>"))
+      (setq param-nodes (mapcar #'car (cdr (treesit-induce-sparse-tree header-node "\\_<parameter_declaration\\_>"))))
+      (mapcar (lambda (param-node)
+                (cond ((setq temp-node (treesit-search-subtree param-node "\\_<param_assignment\\_>"))
+                       `(,(treesit-node-text (treesit-search-subtree temp-node "\\_<simple_identifier\\_>") :no-props)
+                         :data-type ,(treesit-node-text (treesit-search-subtree param-node "\\_<data_type_or_implicit\\_>") :no-props)
+                         :default-value ,(treesit-node-text (treesit-search-subtree param-node "\\_<constant_param_expression\\_>") :no-props)
+                         :is-parameter-type nil))
+                      ((setq temp-node (treesit-search-subtree param-node "\\_<type_assignment\\_>"))
+                       `(,(treesit-node-text (treesit-node-child-by-field-name temp-node "name") :no-props)
+                         :data-type nil
+                         :default-value ,(treesit-node-text (treesit-node-child-by-field-name temp-node "value") :no-props)
+                         :is-parameter-type t))
+                      (t
+                       (user-error "Unexpected error"))))
+              param-nodes))))
+
 
 ;;;; Context
 (defconst verilog-ts-block-at-point-re
