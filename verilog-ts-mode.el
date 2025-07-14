@@ -2567,6 +2567,23 @@ Injection if appropriate if INJECT is non-nil."
         (verilog-ts-mode))
     (verilog-ts-mode)))
 
+(defun verilog-ts-delete-auto ()
+  "Delete the automatic outputs, regs, and wires created by \\[verilog-ts-auto].
+Use \\[verilog-ts-auto] to re-insert the updated AUTOs.
+
+Workaround to run `verilog-delete-auto' in `verilog-ts-mode' avoiding
+`syntax-ppss' errors:
+- https://github.com/gmlarumbe/verilog-ext/issues/12
+
+See `verilog-delete-auto' for more information."
+  (interactive)
+  (unwind-protect
+      (progn
+        (verilog-mode)
+        (verilog-delete-auto)
+        (verilog-ts-mode))
+    (verilog-ts-mode)))
+
 
 ;;; Major-mode
 ;;;; Setup
@@ -2600,7 +2617,8 @@ and the linker to be installed and on PATH."
   "C-c C-o" #'verilog-ts-pretty-expr
   "C-c e n" #'verilog-ts-goto-next-error
   "C-c e p" #'verilog-ts-goto-prev-error
-  "C-c C-a" #'verilog-ts-auto)
+  "C-c C-a" #'verilog-ts-auto
+  "C-c C-k" #'verilog-ts-delete-auto)
 
 (defvar verilog-ts-mode-syntax-table
   (let ((table (make-syntax-table)))
