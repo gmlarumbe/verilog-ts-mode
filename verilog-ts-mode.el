@@ -2494,33 +2494,84 @@ parameter_port_declaration might be shadowed by parameter_declaration nodes."
         (verilog-ts-pretty-expr--goto-node-end))))) ; Move to next expression
 
 ;;; Beautify
-(defun verilog-ts-beautify-block-at-point--align (thing)
+(defun verilog-ts-beautify-instance-at-point--align-node-lines (thing-node-type &optional f-ts-nodes)
+  "Return cons cell with line numbers of nodes to be aligned and indent level.
+
+Expected THING-NODE-TYPE is either `named_parameter_assignment' or
+`named_port_connection'.
+
+F-TS-NODES is a function with one argument which is a tree-sitter node, used to
+calculate the indentation level to be returned.  If not provided calculate
+according to found parenthesis."
+  (let ((f-parens (lambda (node)
+                    (and (treesit-search-subtree node "(" nil :all)
+                         (treesit-search-subtree node ")" nil :all))))
+        instance-node align-nodes align-nodes-cur-indent-level align-nodes-lines indent-level)
+    (setq instance-node (verilog-ts-block-at-point)) ; Refresh outdated instance-node after `indent-region'
+    (setq align-nodes (seq-filter (lambda (node)
+                                    (funcall f-parens node))
+                                  (verilog-ts-nodes thing-node-type instance-node)))
+    (when align-nodes (setq align-nodes-lines ; Needed because of outdated nodes if trying to use align-nodes directly
+                            (delete-dups (mapcar (lambda (node)
+                                                   (line-number-at-pos (treesit-node-start node)))
+                                                 align-nodes)))
+          (when (> (length align-nodes-lines) 1) ; Ignore one-liners
+            (setq align-nodes-cur-indent-level (mapcar (lambda (node)
+                                                         (goto-char (treesit-node-end (funcall (or f-ts-nodes f-parens) node)))
+                                                         (current-column))
+                                                       align-nodes))
+            (setq indent-level (1+ (apply #'max align-nodes-cur-indent-level)))
+            (cons align-nodes-lines indent-level)))))
+
+(defun verilog-ts-beautify-instance-at-point--align (thing)
   "Align THING of current module at point (ports/parameters)."
-  (let ((re-open-par          "\\(\\s-*\\)(")                 ; Port opening parenthesis
-        (re-blank-open-par    "\\(\\s-*\\)(\\(\\s-*\\)")      ; Set 1 blank after port opening parenthesis
-        (re-blank-closing-par "\\(\\s-*\\))")                 ; Set 1 blank before port closing parenthesis
-        (re-port-comma        "\\(\\s-*\\),")                 ; Remove blanks between closing parenthesis and port comma
-        (re-comment           "\\(\\(\\,\\|)\\)\\s-*\\)\/\/") ; Leave 1 blank before port inline comments
-        (node-type (cond ((eq thing 'parameters) "list_of_parameter_value_assignments")
-                         ((eq thing 'ports) "list_of_port_connections")
-                         (t (error "Invalid thing to align"))))
-        (beg (make-marker))
-        (end (make-marker))
-        (comment-end (make-marker))
-        node)
-    (setq node (verilog-ts-block-at-point)) ; Refresh outdated node after `indent-region'
-    (when (setq node (verilog-ts--node-has-child-recursive node node-type))
-      (set-marker beg (treesit-node-start node))
-      (set-marker end (treesit-node-end node))
-      (set-marker comment-end (save-excursion
-                                (goto-char end)
-                                (line-end-position)))
-      (align-regexp beg end re-open-par 1 1 nil)
-      (when verilog-ts-beautify-instance-extra
-        (align-regexp beg end re-blank-open-par 2 1 t)
-        (align-regexp beg end re-blank-closing-par 1 1 t)
-        (align-regexp beg end re-port-comma 1 0 t)
-        (align-regexp beg comment-end re-comment 1 2 nil)))))
+  (let ((f-sibling-at-point (lambda (parent-pred search-node)
+                              (let ((parent-node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) parent-pred)))
+                                (when parent-node
+                                  (treesit-search-subtree parent-node search-node nil :all)))))
+        (f-identifier (lambda (node)
+                        (cond ((eq thing 'parameters) (treesit-search-subtree node "\\_<simple_identifier\\_>"))
+                              ((eq thing 'ports) (treesit-node-child-by-field-name node "port_name"))
+                              (t (error "Invalid thing to align")))))
+        (f-space (if verilog-ts-beautify-instance-extra
+                     #'just-one-space
+                   #'delete-horizontal-space))
+        (thing-node-type (cond ((eq thing 'parameters) "\\_<named_parameter_assignment\\_>")
+                               ((eq thing 'ports) "\\_<named_port_connection\\_>")
+                               (t (error "Invalid thing to align"))))
+        temp-node temp-var align-nodes-lines indent-level)
+    ;; Implementation
+    (setq temp-var (verilog-ts-beautify-instance-at-point--align-node-lines thing-node-type f-identifier))
+    (setq align-nodes-lines (car temp-var))
+    (setq indent-level (cdr temp-var))
+    (mapc (lambda (node-line)
+            (goto-char (point-min))
+            (forward-line (1- node-line))
+            (when (setq temp-node (verilog-ts--node-has-parent-recursive (verilog-ts--node-at-point) thing-node-type))
+              (goto-char (treesit-node-end (funcall f-identifier temp-node)))
+              (just-one-space)
+              (indent-to indent-level)
+              (goto-char (treesit-node-end (funcall f-sibling-at-point thing-node-type "(")))
+              (funcall f-space)
+              (goto-char (treesit-node-start (funcall f-sibling-at-point thing-node-type ")")))
+              (funcall f-space)))
+          align-nodes-lines)
+    ;; Extra alignment processing for closing port/parameter parenthesis
+    (when verilog-ts-beautify-instance-extra
+      (setq temp-var (verilog-ts-beautify-instance-at-point--align-node-lines thing-node-type))
+      (setq align-nodes-lines (car temp-var))
+      (setq indent-level (cdr temp-var))
+      (when indent-level
+        (setq indent-level (- indent-level 2)))
+      (mapc (lambda (node-line)
+              (goto-char (point-min))
+              (forward-line (1- node-line))
+              (goto-char (treesit-node-start (funcall f-sibling-at-point thing-node-type ")")))
+              (just-one-space)
+              (indent-to indent-level))
+            align-nodes-lines))
+    ;; Align comments
+    (verilog-ts-align-comments (verilog-ts-nodes thing-node-type (verilog-ts-block-at-point)))))
 
 (defun verilog-ts-beautify-block-at-point ()
   "Beautify/indent block at point.
@@ -2535,8 +2586,8 @@ If block is an instance, also align parameters and ports."
       (setq name (verilog-ts--node-identifier-name node))
       (indent-region (treesit-node-start node) (treesit-node-end node))
       (when (string-match verilog-ts-instance-re type)
-        (verilog-ts-beautify-block-at-point--align 'parameters)
-        (verilog-ts-beautify-block-at-point--align 'ports)))
+        (verilog-ts-beautify-instance-at-point--align 'parameters)
+        (verilog-ts-beautify-instance-at-point--align 'ports)))
     (message "%s : %s" type name)))
 
 (defun verilog-ts-beautify-instances-current-buffer ()
