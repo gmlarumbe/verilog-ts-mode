@@ -271,11 +271,25 @@ If none is found, return nil."
            (string-match "\\_<variable_decl_assignment\\_>" type)
            (let* ((start-node (or (verilog-ts--node-has-parent-recursive node "\\_<class_property\\_>") ; Place it before to get qualifiers in case it's a property
                                   (verilog-ts--node-has-parent-recursive node "\\_<data_declaration\\_>")))
-                  (end-node (treesit-search-subtree start-node "\\_<variable_decl_assignment\\_>"))) ; Get first declaration of a list of variables to make it more generic
-             (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))))
+                  (end-node (treesit-search-subtree start-node "\\_<variable_decl_assignment\\_>"))  ; Get first declaration of a list of variables to make it more generic
+                  (array-indexes (mapconcat (lambda (node)
+                                              (treesit-node-text node :no-prop))
+                                            (verilog-ts-nodes "\\_<\\(unsized\\|unpacked\\|associative\\|queue\\)_dimension\\_>" end-node))))
+             (concat
+              (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))
+              (when (not (string= array-indexes ""))
+                (concat " " array-indexes)))))
           (;; Nets
            (string-match "\\_<net_decl_assignment\\_>" type)
-           (treesit-node-text (verilog-ts--node-has-child-recursive (verilog-ts--node-has-parent-recursive node "\\_<net_declaration\\_>") "\\_<\\(net_type\\|simple_identifier\\)\\_>") :no-prop))
+           (let* ((start-node (verilog-ts--node-has-parent-recursive node "\\_<net_declaration\\_>"))
+                  (end-node (treesit-search-subtree start-node "\\_<net_decl_assignment\\_>"))
+                  (array-indexes (mapconcat (lambda (node)
+                                              (treesit-node-text node :no-prop))
+                                            (verilog-ts-nodes "\\_<unpacked_dimension\\_>" end-node))))
+             (concat
+              (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))
+              (when (not (string= array-indexes ""))
+                (concat " " array-indexes)))))
           (;; Module/interface/program ports
            (string-match "\\_<ansi_port_declaration\\_>" type)
            (treesit-node-text (treesit-search-subtree node verilog-ts-port-header-ts-re) :no-prop))

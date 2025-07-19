@@ -43,6 +43,7 @@
 (defconst verilog-ts-mode-test-dump-dir (file-name-concat verilog-ts-mode-test-dir "dump"))
 (defconst verilog-ts-mode-test-files-dir (file-name-concat verilog-ts-mode-test-dir "files"))
 (defconst verilog-ts-mode-test-files-common-dir (file-name-concat verilog-ts-mode-test-files-dir "common"))
+(defconst verilog-ts-mode-test-files-github-dir (file-name-concat verilog-ts-mode-test-files-dir "github"))
 (defconst verilog-ts-mode-test-ucontroller-dir (file-name-concat verilog-ts-mode-test-files-dir "ucontroller"))
 (defconst verilog-ts-mode-test-ucontroller-rtl-dir (file-name-concat verilog-ts-mode-test-ucontroller-dir "rtl"))
 (defconst verilog-ts-mode-test-ucontroller-tb-dir (file-name-concat verilog-ts-mode-test-ucontroller-dir "tb"))
