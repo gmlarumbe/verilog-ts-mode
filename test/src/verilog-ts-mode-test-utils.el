@@ -47,6 +47,49 @@
   `((,(file-name-concat verilog-ts-mode-test-files-common-dir "instances.sv") 819 838 906 960 1076 1130 1208 1300 1355 1462 1552 1607 1692 1692 1705 1955 1956 2017 2021 2065 2066 2103 2254 2314 2368 2405 2515 2516 2602 2730 2808 2821)
     (,(file-name-concat verilog-ts-mode-test-files-common-dir "ucontroller.sv") 833 1072 1530 2334 2335 2346 2539 2975 2999 3000 3112 3204 3337 3768 3939 4122 4399 4592 4722 4862 4888)))
 
+(defconst verilog-ts-mode-test-utils-identifier-file-list (mapcar (lambda (file)
+                                                                    (file-name-concat verilog-ts-mode-test-files-common-dir file))
+                                                                  '("instances.sv"
+                                                                    "ucontroller.sv"
+                                                                    "axi_demux.sv"
+                                                                    "tb_program.sv"
+                                                                    "uvm_component.svh")))
+
+(defconst verilog-ts-mode-test-utils-identifier-ts-re
+  (regexp-opt
+   '(;; Declarations
+     "module_declaration"
+     "interface_declaration"
+     "program_declaration"
+     "package_declaration"
+     "class_declaration"
+     "interface_class_declaration"
+     "class_constructor_declaration"
+     "checker_declaration"
+     "config_declaration"
+     "task_declaration"
+     "function_declaration"
+     "function_body_declaration"
+     "task_body_declaration"
+     "parameter_declaration"
+     "local_parameter_declaration"
+     "ansi_port_declaration"
+     "type_declaration"
+     ;; Instantiation
+     "module_instantiation"
+     "interface_instantiation"
+     "program_instantiation"
+     "gate_instantiation"
+     "udp_instantiation"
+     "checker_instantiation"
+     ;; Others
+     "variable_decl_assignment"
+     "net_decl_assignment"
+     "class_property"
+     "class_constructor_prototype"
+     "tf_port_item")
+   'symbols))
+
 
 (defun verilog-ts-mode-test-utils-block-at-point-fn ()
   (treesit-node-type (verilog-ts-block-at-point)))
@@ -61,6 +104,15 @@
   (let ((node (verilog-ts-module-at-point)))
     (when node
       (verilog-ts--node-identifier-name node))))
+
+(defun verilog-ts-mode-test-utils-identifier-fn ()
+  (let (node ret-value)
+    (goto-char (point-min))
+    (while (setq node (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-mode-test-utils-identifier-ts-re))
+      (push `(,(verilog-ts--node-identifier-name node)
+              ,(verilog-ts--node-identifier-type node))
+            ret-value))
+    (reverse ret-value)))
 
 
 (defun verilog-ts-mode-test-utils-gen-expected-files ()
@@ -99,7 +151,14 @@
                                    :fn #'test-hdl-pos-list-fn
                                    :args `(:mode verilog-mode
                                            :fn verilog-ts-mode-test-utils-module-at-point-fn
-                                           :pos-list ,pos-list)))))
+                                           :pos-list ,pos-list))))
+  ;; Identifier name and type
+  (dolist (file verilog-ts-mode-test-utils-identifier-file-list)
+    (test-hdl-gen-expected-files :file-list `(,file)
+                                 :dest-dir verilog-ts-mode-test-ref-dir-utils
+                                 :out-file-ext "identifier.el"
+                                 :process-fn 'eval
+                                 :fn #'verilog-ts-mode-test-utils-identifier-fn)))
 
 
 (ert-deftest utils::block-at-point ()
@@ -141,6 +200,16 @@
                                                                    :fn verilog-ts-mode-test-utils-module-at-point-fn
                                                                    :pos-list ,pos-list))
                                     (file-name-concat verilog-ts-mode-test-ref-dir-utils (test-hdl-basename file "mod.point.el")))))))
+
+
+(ert-deftest utils::identifier ()
+  (dolist (file verilog-ts-mode-test-utils-identifier-file-list)
+    (should (test-hdl-files-equal (test-hdl-process-file :test-file file
+                                                         :dump-file (file-name-concat verilog-ts-mode-test-dump-dir-utils (test-hdl-basename file "identifier.el"))
+                                                         :process-fn 'eval
+                                                         :fn #'verilog-ts-mode-test-utils-identifier-fn)
+                                  (file-name-concat verilog-ts-mode-test-ref-dir-utils (test-hdl-basename file "identifier.el"))))))
+
 
 
 

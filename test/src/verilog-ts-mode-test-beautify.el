@@ -30,7 +30,7 @@
 
 
 (defconst verilog-ts-mode-test-beautify-file-list (append verilog-ts-mode-test-common-file-list
-                                                          (list (file-name-concat verilog-ts-mode-test-files-dir "github/verilog_ext_29.sv"))))
+                                                          (list (file-name-concat verilog-ts-mode-test-files-github-dir "verilog_ext_29.sv"))))
 
 (defconst verilog-ts-mode-test-prettify-file-list
   (append verilog-ts-mode-test-common-file-list
