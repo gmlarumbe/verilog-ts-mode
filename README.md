@@ -1,6 +1,8 @@
 [![MELPA](https://melpa.org/packages/verilog-ts-mode-badge.svg)](https://melpa.org/#/verilog-ts-mode)
 [![MELPA Stable](https://stable.melpa.org/packages/verilog-ts-mode-badge.svg)](https://stable.melpa.org/#/verilog-ts-mode)
 [![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight.yml/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight.yml)
+[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight_release_snapshot.yml/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight_release_snapshot.yml)
+[![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight_snapshot.yml/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_straight_snapshot.yml)
 [![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package_melpa_basic.yml/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package_melpa_basic.yml)
 [![Build Status](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package_melpa_stable.yml/badge.svg)](https://github.com/gmlarumbe/verilog-ts-mode/actions/workflows/build_package_melpa_stable.yml)
 
