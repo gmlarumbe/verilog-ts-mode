@@ -1,0 +1,5 @@
+(("clk" "input logic")
+ ("a" "input logic")
+ ("c" "output logic")
+ ("d" "output byte")
+ ("test" "module_declaration"))

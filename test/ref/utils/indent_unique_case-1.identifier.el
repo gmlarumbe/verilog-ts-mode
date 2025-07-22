@@ -1,0 +1,5 @@
+(("clk" "input wire")
+ ("reset" "input wire")
+ ("xxxxxx_state_e" "enum reg [4:0] {IDLE, IIII, HHHHH,\n			   AA_OP, AA_CMRD, AA_CMRD_WAIT, AA_RMW, AA_RMW_WAIT, AA_CMLLL, AA_CMLLL_WAIT, AA_NEXT,\n			   BB_OP, BB_CMLLL, BB_CMLLL_WAIT, BB_NEXT,\n			   CC_OP, CC_NEXT_OOOO,\n			   DD_OP, DD_CMRD, DD_CMRD_WAIT, DD_ACCUM, DD_CMLLL, DD_CMLLL_WAIT,\n			   EE_OP, EE_NEXT_OOOO,\n			   FF_OP,\n			   zxcvzxcv, cvbncvbn}")
+ ("current_state" "xxxxxx_state_e")
+ ("xxx_xxxxxx" "module_declaration"))

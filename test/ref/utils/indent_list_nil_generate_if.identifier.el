@@ -1,0 +1,7 @@
+(("a" "input wire")
+ ("b" "input wire")
+ ("z" "output reg")
+ ("VAR" "parameter_declaration")
+ ("inst" "module_instantiation")
+ ("inst2" "module_instantiation")
+ ("foo" "module_declaration"))

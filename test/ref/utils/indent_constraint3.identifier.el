@@ -1,0 +1,6 @@
+(("data1" "rand integer")
+ ("data2" "rand integer")
+ ("data3" "rand integer")
+ ("foo" "rand reg [31:0]")
+ ("new" "class_constructor_declaration")
+ ("data" "class_declaration"))

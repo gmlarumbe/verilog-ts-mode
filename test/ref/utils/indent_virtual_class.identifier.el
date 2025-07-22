@@ -1,0 +1,6 @@
+(("a" "type_t")
+ ("b" "type_t")
+ ("s" "string")
+ ("f" "function_body_declaration")
+ ("c" "class_declaration")
+ ("p" "package_declaration"))

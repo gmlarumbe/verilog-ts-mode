@@ -1,0 +1,6 @@
+(("x" "reg [3:0]")
+ ("y" "wire")
+ ("test" "module_declaration")
+ ("x" "reg [3:0]")
+ ("y" "wire")
+ ("test" "module_declaration"))

@@ -1,0 +1,5 @@
+(("data_in" "input [63:0]")
+ ("ctl_in" "input")
+ ("data_out" "output [63:0]")
+ ("ctl_out" "output")
+ ("foo" "module_declaration"))

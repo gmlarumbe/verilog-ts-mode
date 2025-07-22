@@ -1,0 +1,5 @@
+(("color" "enum { red, green, blue }")
+ ("bar" "foo 	  =")
+ ("taskt" "j 	  =")
+ ("foo" "function_body_declaration")
+ ("coverage" "module_declaration"))

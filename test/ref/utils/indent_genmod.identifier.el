@@ -1,0 +1,6 @@
+(("subindent" "module_instantiation")
+ ("subindent" "module_instantiation")
+ ("indent" "module_declaration")
+ ("a" "input")
+ ("y" "output")
+ ("subindent" "module_declaration"))

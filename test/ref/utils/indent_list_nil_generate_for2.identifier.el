@@ -1,0 +1,6 @@
+(("a" "input wire")
+ ("b" "input wire")
+ ("z" "output reg")
+ ("CONST" "local_parameter_declaration")
+ ("inst" "module_instantiation")
+ ("foo" "module_declaration"))

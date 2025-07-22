@@ -1,0 +1,8 @@
+(("reset_n" "input logic")
+ ("clock" "input logic")
+ ("sink" "streambus.sink")
+ ("source" "streambus.source")
+ ("interrupt_pulse" "output logic")
+ ("test" "logic [31:0]")
+ ("source" "streambus.source")
+ ("mymodule" "module_declaration"))

@@ -1,0 +1,8 @@
+(("P" "parameter_declaration")
+ ("d" "input")
+ ("q" "output reg")
+ ("indent_gen_for" "module_declaration")
+ ("P" "parameter_declaration")
+ ("d" "input")
+ ("q" "output reg")
+ ("indent_gen_for" "module_declaration"))

@@ -1,0 +1,5 @@
+(("a" "input logic")
+ ("b" "output logic")
+ ("submod" "module_instantiation")
+ ("submod" "module_instantiation")
+ ("test" "module_declaration"))

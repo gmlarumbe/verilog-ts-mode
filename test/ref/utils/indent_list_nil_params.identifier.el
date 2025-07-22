@@ -1,0 +1,8 @@
+(("A" "parameter_declaration")
+ ("B" "parameter_declaration")
+ ("C" "parameter_declaration")
+ ("D" "parameter_declaration")
+ ("a" "input wire")
+ ("b" "input wire")
+ ("z" "output reg")
+ ("foo" "module_declaration"))

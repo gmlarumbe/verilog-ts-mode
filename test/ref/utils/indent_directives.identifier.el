@@ -1,0 +1,5 @@
+(("CHIP" "module_instantiation")
+ ("CHIP" "module_instantiation")
+ ("a" "reg")
+ ("b" "reg")
+ ("foo" "module_declaration"))

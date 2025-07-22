@@ -1,0 +1,6 @@
+(("a" "input")
+ ("b" "input")
+ ("c" "output")
+ ("s" "parameter_declaration")
+ ("myreg" "reg [s:0]")
+ ("test" "module_declaration"))

@@ -1,0 +1,8 @@
+(("byte_t" "logic [7:0]")
+ ("ALL_ONES" "local_parameter_declaration")
+ ("ALL_ZEROS" "local_parameter_declaration")
+ ("a" "input int")
+ ("foo3" "function_body_declaration")
+ ("foo2" "byte_t")
+ ("A" "class_declaration")
+ ("foo" "package_declaration"))

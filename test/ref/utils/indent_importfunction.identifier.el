@@ -1,0 +1,5 @@
+(("dummy" "input logic")
+ ("a" "input real")
+ ("a" "input real")
+ ("a" "logic")
+ ("toto" "module_declaration"))

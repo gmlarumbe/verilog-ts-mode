@@ -260,6 +260,15 @@ If none is found, return nil."
            (let* ((param-name-node (treesit-search-subtree node "\\_<\\(param\\|type\\)_assignment\\_>"))
                   (node-identifier (treesit-search-subtree param-name-node "\\_<simple_identifier\\_>")))
              (treesit-node-text node-identifier :no-prop)))
+          ;; struct/union member
+          ((string-match "\\_<struct_union_member\\_>" (treesit-node-type node))
+           (treesit-node-text (treesit-node-child-by-field-name (treesit-search-subtree node "\\_<variable_decl_assignment\\_>") "name") :no-prop))
+          ;; Generic data_type (for structs/enums)
+          ((string-match "\\_<data_type_or_\\(implicit\\|void\\)\\_>" (treesit-node-type node))
+           (let ((var-name-node (treesit-node-next-sibling node)))
+             (if var-name-node
+                 (verilog-ts--node-identifier-name (treesit-search-subtree var-name-node "\\_<variable_decl_assignment\\_>"))
+               (treesit-node-text (treesit-search-subtree node "\\_<simple_identifier\\_>") :no-prop)))) ; default
           ;; default
           (t
            (treesit-node-text (treesit-search-subtree node "\\_<simple_identifier\\_>") :no-prop)))))
@@ -267,16 +276,35 @@ If none is found, return nil."
 (defun verilog-ts--node-identifier-type (node)
   "Return identifier type of NODE."
   (let ((type (treesit-node-type node)))
-    (cond (;; Variables
+    (cond (;; Typedefs (+ typedef struct/enum)- INFO: Needs to be placed before "\\_<variable_decl_assignment\\_>" since it is a particular case of it
+           (string-match "\\_<type_declaration\\_>" type)
+           (let* ((start-node (verilog-ts--node-has-parent-recursive node "\\_<data_declaration\\_>"))
+                  (end-node (verilog-ts--node-has-child-recursive start-node "\\_<\\(class\\|data\\)_type\\_>")))
+             (if end-node
+                 (treesit-node-text end-node :no-prop)
+               ;; Check if it's a typedef class
+               (when (and (verilog-ts--node-has-child-recursive start-node "typedef")
+                          (verilog-ts--node-has-child-recursive start-node "class"))
+                 "typedef class"))))
+          (;; Variables (+ struct/enum)
            (string-match "\\_<variable_decl_assignment\\_>" type)
-           (let* ((start-node (or (verilog-ts--node-has-parent-recursive node "\\_<class_property\\_>") ; Place it before to get qualifiers in case it's a property
+           (let* ((start-node (or (verilog-ts--node-has-parent-recursive node "\\_<struct_union_member\\_>") ; Order is important:
+                                  (verilog-ts--node-has-parent-recursive node "\\_<class_property\\_>")      ; - From less generic to more generic
                                   (verilog-ts--node-has-parent-recursive node "\\_<data_declaration\\_>")))
-                  (end-node (treesit-search-subtree start-node "\\_<variable_decl_assignment\\_>"))  ; Get first declaration of a list of variables to make it more generic
+                  (data-type-node (when start-node
+                                    (treesit-search-subtree start-node "\\_<data_type_or_\\(implicit\\|void\\)\\_>")))
                   (array-indexes (mapconcat (lambda (node)
                                               (treesit-node-text node :no-prop))
-                                            (verilog-ts-nodes "\\_<\\(unsized\\|unpacked\\|associative\\|queue\\)_dimension\\_>" end-node))))
+                                            (verilog-ts-nodes "\\_<\\(unsized\\|unpacked\\|associative\\|queue\\)_dimension\\_>" node)))
+                  (start-node-start-pos (treesit-node-start start-node))
+                  (data-type-node-start-pos (treesit-node-start data-type-node)))
              (concat
-              (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))
+              (when (and (or (string= (treesit-node-type start-node) "class_property")
+                             (string= (treesit-node-type start-node) "data_declaration"))
+                         (< start-node-start-pos data-type-node-start-pos))
+                (concat (string-trim-right (buffer-substring-no-properties start-node-start-pos data-type-node-start-pos)) " "))
+              (when data-type-node
+                (treesit-node-text data-type-node :no-props))
               (when (not (string= array-indexes ""))
                 (concat " " array-indexes)))))
           (;; Nets
@@ -285,7 +313,7 @@ If none is found, return nil."
                   (end-node (treesit-search-subtree start-node "\\_<net_decl_assignment\\_>"))
                   (array-indexes (mapconcat (lambda (node)
                                               (treesit-node-text node :no-prop))
-                                            (verilog-ts-nodes "\\_<unpacked_dimension\\_>" end-node))))
+                                            (verilog-ts-nodes "\\_<unpacked_dimension\\_>" node))))
              (concat
               (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))
               (when (not (string= array-indexes ""))
@@ -298,9 +326,6 @@ If none is found, return nil."
            (let ((port-direction (treesit-node-text (treesit-search-subtree node "\\_<tf_port_direction\\_>") :no-prop)))
              (concat (when port-direction (concat port-direction " "))
                      (treesit-node-text (treesit-search-subtree node "\\_<data_type_or_implicit\\_>") :no-prop))))
-          (;; Typedefs
-           (string-match "\\_<type_declaration\\_>" type)
-           (treesit-node-text (verilog-ts--node-has-child-recursive (verilog-ts--node-has-parent-recursive node "\\_<data_declaration\\_>") "\\_<\\(class\\|data\\)_type\\_>") :no-prop))
           (t ;; Default
            type))))
 

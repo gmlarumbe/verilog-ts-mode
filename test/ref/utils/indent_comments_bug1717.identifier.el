@@ -1,0 +1,6 @@
+(("test5" "input wire")
+ ("test4" "reg")
+ ("test3" "wire")
+ ("test1" "wire")
+ ("test" "wire")
+ ("test" "module_declaration"))

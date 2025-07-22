@@ -1,0 +1,8 @@
+(("b4_c" "typedef class")
+ ("drain_time_ns" "int")
+ ("err_rsp" "pem_intf_defs::pem_ncb_err_rsp_t")
+ ("rcv_time" "int")
+ ("ncbi_err_rsp_t" "struct {\n      pem_intf_defs::pem_ncb_err_rsp_t  err_rsp;\n      int         rcv_time;\n   }")
+ ("duax" "int")
+ ("trwed" "int")
+ ("i_sb_c" "class_declaration"))

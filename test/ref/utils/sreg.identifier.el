@@ -1,0 +1,7 @@
+(("Clk" "input logic")
+ ("Rst_n" "input logic")
+ ("Ena" "input logic")
+ ("Din" "input logic")
+ ("Qout" "output logic [7:0]")
+ ("data_out" "logic [7:0]")
+ ("sreg" "module_declaration"))

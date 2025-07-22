@@ -1,0 +1,5 @@
+(("clk" "input")
+ ("reset" "input")
+ ("data" "input [15:0]")
+ ("c" "b")
+ ("myassert" "module_declaration"))

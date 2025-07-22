@@ -47,13 +47,12 @@
   `((,(file-name-concat verilog-ts-mode-test-files-common-dir "instances.sv") 819 838 906 960 1076 1130 1208 1300 1355 1462 1552 1607 1692 1692 1705 1955 1956 2017 2021 2065 2066 2103 2254 2314 2368 2405 2515 2516 2602 2730 2808 2821)
     (,(file-name-concat verilog-ts-mode-test-files-common-dir "ucontroller.sv") 833 1072 1530 2334 2335 2346 2539 2975 2999 3000 3112 3204 3337 3768 3939 4122 4399 4592 4722 4862 4888)))
 
-(defconst verilog-ts-mode-test-utils-identifier-file-list (mapcar (lambda (file)
-                                                                    (file-name-concat verilog-ts-mode-test-files-common-dir file))
-                                                                  '("instances.sv"
-                                                                    "ucontroller.sv"
-                                                                    "axi_demux.sv"
-                                                                    "tb_program.sv"
-                                                                    "uvm_component.svh")))
+(defconst verilog-ts-mode-test-utils-identifier-file-list
+  (append (remove (file-name-concat verilog-ts-mode-test-files-common-dir "ucontroller.sv")
+                  (test-hdl-directory-files verilog-ts-mode-test-files-common-dir verilog-ts-file-extension-re))
+          (test-hdl-directory-files verilog-ts-mode-test-files-veripool-dir verilog-ts-file-extension-re)
+          (test-hdl-directory-files verilog-ts-mode-test-ucontroller-rtl-dir verilog-ts-file-extension-re)
+          (test-hdl-directory-files verilog-ts-mode-test-ucontroller-tb-dir verilog-ts-file-extension-re)))
 
 (defconst verilog-ts-mode-test-utils-identifier-ts-re
   (regexp-opt
