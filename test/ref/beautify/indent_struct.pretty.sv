@@ -20,23 +20,23 @@ bit [31:0] 	 data[0:7]; // Write data
 struct {
 reg   f;
 xyzzy b;
-};
+}s1;
 struct packed {
 int a; // ok
-};
+}s2;
 struct packed signed {
 int a; // woops
-};
+}s3;
 struct packed unsigned {
 int a; // woops
-};
+}s4;
 
 endmodule // foo
 
 module foo (
 input  a,
 input  c,
-output d,
+output d
 );
 always @(a) g;
 
