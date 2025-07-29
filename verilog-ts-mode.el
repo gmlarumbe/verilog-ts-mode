@@ -191,7 +191,7 @@ into account."
                 (lambda (node)
                   (eq bol (treesit-node-start node))))))
     (if (and skip-comment
-             (string= (treesit-node-type node) "comment")
+             (string-match "\\_<\\(block\\|one_line\\)_comment\\_>" (treesit-node-type node))
              (> (line-end-position) (treesit-node-end node)))
         (progn
           (goto-char (treesit-node-end node))
@@ -774,13 +774,11 @@ obj.method();"
     ":=" ":/" "-:" "+:"))
 
 (defconst verilog-ts-directives
-  (eval-when-compile
-    (mapcar (lambda (elm)
-              (concat "directive_" elm))
-            '("include" "define" "ifdef" "ifndef" "timescale" "default_nettype"
-              "elsif" "undef" "resetall" "undefineall" "endif" "else"
-              "unconnected_drive" "celldefine" "endcelldefine" "end_keywords"
-              "line" "begin_keywords" "pragma" "__FILE__" "__LINE__"))))
+  '("`include" "`define" "`ifdef" "`ifndef" "`timescale" "`default_nettype"
+    "`elsif" "`undef" (resetall_compiler_directive) (undefineall_compiler_directive)
+    "`endif" "`else" "`unconnected_drive" (celldefine_compiler_directive)
+    (endcelldefine_compiler_directive) (endkeywords_directive) "`line"
+    "`begin_keywords" "`pragma" "`__FILE__" "`__LINE__"))
 
 
 ;;;; Functions
@@ -800,7 +798,8 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
   (treesit-font-lock-rules
    :feature 'comment
    :language 'verilog
-   '((comment) @font-lock-comment-face)
+   '(((one_line_comment) @font-lock-comment-face)
+     ((block_comment) @font-lock-comment-face))
 
    :feature 'string
    :language 'verilog
@@ -1472,16 +1471,16 @@ Indent package imports on ANSI headers, used in conjunction with
      ;; Unit scope
      (verilog-ts--matcher-unit-scope verilog-ts--anchor-point-min 0) ; Place first for highest precedence
      ;; Comments
-     ((and (node-is "comment")
+     ((and (node-is "\\_<\\(block\\|one_line\\)_comment\\_>")
            verilog-ts--matcher-unit-scope)
       verilog-ts--anchor-point-min 0)
-     ((and (node-is "comment")
+     ((and (node-is "\\_<\\(block\\|one_line\\)_comment\\_>")
            (parent-is "\\(conditional_statement\\|list_of_port_connections\\)"))
       parent-bol 0)
-     ((and (node-is "comment")
+     ((and (node-is "\\_<\\(block\\|one_line\\)_comment\\_>")
            (parent-is "list_of_port_declarations"))
       verilog-ts--anchor-grandparent-bol verilog-ts-indent-level)
-     ((node-is "comment") parent-bol verilog-ts-indent-level)
+     ((node-is "\\_<\\(block\\|one_line\\)_comment\\_>") parent-bol verilog-ts-indent-level)
      ;; Procedural
      ((node-is ,verilog-ts--indent-procedural) parent-bol verilog-ts-indent-level)
      ;; ANSI Port/parameter declaration
