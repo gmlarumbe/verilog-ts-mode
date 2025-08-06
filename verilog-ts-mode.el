@@ -934,8 +934,8 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
       instance_type: (simple_identifier) @verilog-ts-font-lock-module-face)
      (checker_instantiation
       instance_type: (simple_identifier) @verilog-ts-font-lock-module-face)
-     (udp_instantiation ; INFO: UDPs: Adding field to udp_identifier is still buggy in the grammar
-      (simple_identifier) @verilog-ts-font-lock-module-face)
+     (udp_instantiation
+      instance_type: (simple_identifier) @verilog-ts-font-lock-module-face)
      (gate_instantiation
       [(cmos_switchtype)
        (mos_switchtype)
