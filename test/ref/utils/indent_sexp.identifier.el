@@ -8,4 +8,4 @@
  ("foo5" "interface_class_declaration")
  ("foo7" "class_declaration")
  ("foo6" "class_declaration")
- (nil "program_declaration"))
+ ("foo" "program_declaration"))

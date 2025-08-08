@@ -5,7 +5,7 @@
  ("mode" "logic [1:0]")
  ("start" "logic")
  ("rdy" "logic")
- (nil "interface_declaration")
+ ("simple_bus" "interface_declaration")
  ("a" "simple_bus")
  ("clk" "input bit")
  ("avail" "logic")

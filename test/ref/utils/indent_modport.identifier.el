@@ -1,2 +1,2 @@
 (("a" "logic")
- (nil "interface_declaration"))
+ ("foo" "interface_declaration"))

@@ -225,8 +225,8 @@ If none is found, return nil."
   (when node
     (cond (;; module/interface/program
            (string-match "\\_<\\(module\\|interface\\|program\\)_declaration\\_>" (treesit-node-type node))
-           (or (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props) ; extern module instantiation
-               (treesit-node-text (treesit-node-child-by-field-name (treesit-search-subtree node "\\_<module_\\(non\\)?ansi_header") "name") :no-props)))
+           (or (treesit-node-text (treesit-node-child-by-field-name (treesit-search-subtree node "\\_<\\(module\\|interface\\|program\\)_\\(non\\)?ansi_header") "name") :no-props)
+               (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props))) ; extern module instantiation
           ;; package/class/function/task/checker/config
           ((string-match verilog-ts-declaration-node-re (treesit-node-type node))
            (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props))

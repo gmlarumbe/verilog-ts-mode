@@ -12,7 +12,7 @@
  ("mask" "logic [31:0]")
  ("op" "logic [31:0]")
  ("valid" "logic")
- (nil "interface_declaration")
+ ("mipsbfm_if" "interface_declaration")
  ("in_chan" "mipsbfm_trans_channel")
  ("in_chan" "class_property")
  ("mipsbfm_master" "class_declaration"))
