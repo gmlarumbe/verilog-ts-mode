@@ -6,5 +6,5 @@
  ("Address" "input logic [7:0]")
  ("DataIn" "input logic [7:0]")
  ("DataOut" "output logic [7:0]")
- ("mem" "logic [7:0] [RAM_DEPTH]")
+ ("mem" "logic [7:0] / [RAM_DEPTH]")
  ("gp_ram" "module_declaration"))

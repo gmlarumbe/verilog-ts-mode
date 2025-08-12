@@ -8,7 +8,7 @@
  ("addr" "bit [31:2]")
  ("byte_sel" "bit [3:0]")
  ("len" "int")
- ("data" "bit [31:0] [0:7]")
+ ("data" "bit [31:0] / [0:7]")
  ("ahb_req_t" "struct {\nreg r;\nahb_op_t op; // Read, write, etc.\nahb_cycle_type_t cti; // Cycle type for bursts\nahb_incr_type_t incr; // Increment type (for bursts)\nbit b;\nreg r;\nahb_thingy a;\nbit [31:2] addr; // Starting address\nbit [3:0] byte_sel; // Byte lane select\nint len; // Length of transfer\nbit [31:0] data[0:7]; // Write data\n}")
  ("f" "reg")
  ("b" "xyzzy")

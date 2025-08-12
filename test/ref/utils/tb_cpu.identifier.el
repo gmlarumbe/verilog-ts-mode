@@ -22,7 +22,7 @@
  ("ALU_DataIn" "logic [7:0]")
  ("DataOut" "logic [7:0]")
  ("cpu" "module_instantiation")
- ("ROM" "logic [11:0] [4096]")
+ ("ROM" "logic [11:0] / [4096]")
  ("init_rom" "task_body_declaration")
  ("reset_system" "task_body_declaration")
  ("dma_req" "task_body_declaration")

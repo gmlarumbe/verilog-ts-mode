@@ -306,7 +306,7 @@ If none is found, return nil."
               (when data-type-node
                 (treesit-node-text data-type-node :no-props))
               (when (not (string= array-indexes ""))
-                (concat " " array-indexes)))))
+                (concat " / " array-indexes)))))
           (;; Nets
            (string-match "\\_<net_decl_assignment\\_>" type)
            (let* ((start-node (verilog-ts--node-has-parent-recursive node "\\_<net_declaration\\_>"))
@@ -317,15 +317,20 @@ If none is found, return nil."
              (concat
               (string-trim-right (buffer-substring-no-properties (treesit-node-start start-node) (treesit-node-start end-node)))
               (when (not (string= array-indexes ""))
-                (concat " " array-indexes)))))
+                (concat " / " array-indexes)))))
           (;; Module/interface/program ports
            (string-match "\\_<ansi_port_declaration\\_>" type)
            (treesit-node-text (treesit-search-subtree node verilog-ts-port-header-ts-re) :no-prop))
           (;; Task/function arguments
            (string-match "\\_<tf_port_item\\_>" type)
-           (let ((port-direction (treesit-node-text (treesit-search-subtree node "\\_<tf_port_direction\\_>") :no-prop)))
+           (let ((port-direction (treesit-node-text (treesit-search-subtree node "\\_<tf_port_direction\\_>") :no-prop))
+                 (array-indexes (mapconcat (lambda (node)
+                                             (treesit-node-text node :no-prop))
+                                           (verilog-ts-nodes "\\_<\\(unsized\\|unpacked\\|associative\\|queue\\)_dimension\\_>" node))))
              (concat (when port-direction (concat port-direction " "))
-                     (treesit-node-text (treesit-search-subtree node "\\_<data_type_or_implicit\\_>") :no-prop))))
+                     (treesit-node-text (treesit-search-subtree node "\\_<data_type_or_implicit\\_>") :no-prop)
+                     (when (not (string= array-indexes ""))
+                       (concat " / " array-indexes)))))
           (t ;; Default
            type))))
 

@@ -9,7 +9,7 @@
  ("FREQ_CLK" "local_parameter_declaration")
  ("TX_SPEED" "local_parameter_declaration")
  ("BIT_CYCLES" "local_parameter_declaration")
- ("ROM" "logic [11:0] [4096]")
+ ("ROM" "logic [11:0] / [4096]")
  ("init_rom" "task_body_declaration")
  ("init_values" "task_body_declaration")
  ("reset_system" "task_body_declaration")
