@@ -1,0 +1,24 @@
+«k:module» «f:foo»«:verilog-ts-font-lock-punctuation-face:;»
+
+«:verilog-ts-font-lock-module-face:foo_module» «:verilog-ts-font-lock-time-event-face:#»«:verilog-ts-font-lock-parenthesis-face:(»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:G_SOME_CONSTANT» «:verilog-ts-font-lock-parenthesis-face:(»   5«:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:G_SOME_OTHER_CONSTANT» «:verilog-ts-font-lock-parenthesis-face:(»   5«:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:G_EVEN_SOME_OTHER_CONSTANT»     «:verilog-ts-font-lock-parenthesis-face:(»  «:verilog-ts-font-lock-parenthesis-face:)»
+«:verilog-ts-font-lock-parenthesis-face:)» «:verilog-ts-font-lock-instance-face:my_foo» «:verilog-ts-font-lock-parenthesis-face:(»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:clk»    «:verilog-ts-font-lock-parenthesis-face:(»my_clk                           «:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,» «x:// asdf»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:reset» «:verilog-ts-font-lock-parenthesis-face:(» my_reset«:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»
+
+«x:// Comment regarding the ports below (because sometimes it's warranted)»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:port_a» «:verilog-ts-font-lock-parenthesis-face:(»my_a                             «:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»«x:// asdf 2»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:port_b»«:verilog-ts-font-lock-parenthesis-face:(» my_b                             «:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»            «x:// asdf3»
+
+«x://Another comment (with paren)»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:port_c»   «:verilog-ts-font-lock-parenthesis-face:(» my_c                             «:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:port_d» «:verilog-ts-font-lock-parenthesis-face:(» my_d                             «:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:,»
+
+«x:// Some implicit port connections»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:port_e»«:verilog-ts-font-lock-punctuation-face:,»
+«:verilog-ts-font-lock-operator-face:.»«:verilog-ts-font-lock-port-connection-face:port_f»
+«:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:;»
+
+«k:endmodule»

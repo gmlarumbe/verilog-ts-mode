@@ -49,8 +49,11 @@
 (defconst verilog-ts-mode-test-ucontroller-rtl-dir (file-name-concat verilog-ts-mode-test-ucontroller-dir "rtl"))
 (defconst verilog-ts-mode-test-ucontroller-tb-dir (file-name-concat verilog-ts-mode-test-ucontroller-dir "tb"))
 
-(defconst verilog-ts-mode-test-common-file-list (test-hdl-directory-files verilog-ts-mode-test-files-common-dir
-                                                                          verilog-ts-file-extension-re))
+(defconst verilog-ts-mode-test-common-file-list
+  (append (test-hdl-directory-files verilog-ts-mode-test-files-common-dir
+                                    verilog-ts-file-extension-re)
+          (test-hdl-directory-files verilog-ts-mode-test-files-github-dir
+                                    verilog-ts-file-extension-re)))
 
 
 ;;;; Tests

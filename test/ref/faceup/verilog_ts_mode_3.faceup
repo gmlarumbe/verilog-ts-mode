@@ -1,0 +1,10 @@
+«x:// verilog-ts-mode #3: No indentation for first package import in module declaration»
+«k:module» «f:foo»
+«k:import» bar_pkg«:verilog-ts-font-lock-punctuation-face:::»«:verilog-ts-font-lock-operator-face:*»«:verilog-ts-font-lock-punctuation-face:;»
+  «k:import» baz_pkg«:verilog-ts-font-lock-punctuation-face:::»«:verilog-ts-font-lock-operator-face:*»«:verilog-ts-font-lock-punctuation-face:;»
+  «:verilog-ts-font-lock-parenthesis-face:(»
+  «:verilog-ts-font-lock-direction-face:input» «t:wire» clk«:verilog-ts-font-lock-punctuation-face:,»
+  «:verilog-ts-font-lock-direction-face:input» «t:wire» rst
+  «:verilog-ts-font-lock-parenthesis-face:)»«:verilog-ts-font-lock-punctuation-face:;»
+
+«k:endmodule» «x:// foo»
