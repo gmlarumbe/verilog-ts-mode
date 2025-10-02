@@ -729,30 +729,33 @@ obj.method();"
 ;; There are some keywords that are not recognized by tree-sitter grammar.
 ;; For these ones, use regexp matching patterns inside tree-sitter (:match "^foo$")
 (defconst verilog-ts-keywords
-  '("alias" "and" "assert" "assign" "assume" "before" "bind" "binsof" "break"
-    "case" "checker" "class" "class" "clocking" "config" "const" "constraint"
-    "cover" "covergroup" "coverpoint" "cross" "default" "defparam" "disable"
-    "do" "else" "endcase" "endchecker" "endclass" "endclocking" "endconfig"
-    "endfunction" "endgenerate" "endgroup" "endinterface" "endmodule"
+  '("accept_on" "alias" "and" "assert" "assign" "assume" "before" "bind"
+    "binsof" "break" "case" "checker" "class" "class" "clocking" "config" "const"
+    "constraint" "cover" "covergroup" "coverpoint" "cross" "default" "defparam"
+    "disable" "do" "else" "endcase" "endchecker" "endclass" "endclocking"
+    "endconfig" "endfunction" "endgenerate" "endgroup" "endinterface" "endmodule"
     "endpackage" "endprogram" "endproperty" "endsequence" "endtask" "enum"
-    "extends" "extern" "final" "first_match" "for" "force" "foreach" "forever"
-    "fork" "forkjoin" "function" "generate" "genvar" "if" "iff" "illegal_bins"
-    "implements" "import" "initial" "inside" "interconnect" "interface"
-    "intersect" "join" "join_any" "join_none" "local" "localparam" "matches"
-    "modport" "new" "null" "option" "or" "package" "packed" "parameter"
-    "program" "property" "pure" "randcase" "randomize" "release" "repeat"
-    "return" "sequence" "showcancelled" "soft" "solve" "struct" "super" "tagged"
-    "task" "timeprecision" "timeunit" "type" "typedef" "union" "unique"
-    "virtual" "wait" "while" "with"
-    (always_keyword)       ; always, always_comb, always_latch, always_ff
-    (bins_keyword)         ; bins, illegal_bins, ignore_bins
-    (case_keyword)         ; case, casez, casex
-    (class_item_qualifier) ; static, protected, local
-    (edge_identifier)      ; posedge, negedge, edge
-    (lifetime)             ; static, automatic
-    (module_keyword)       ; module, macromodule
-    (random_qualifier)     ; rand, randc
-    (unique_priority)))    ; unique, unique0, priority
+    "eventually" "export" "extends" "extern" "final" "first_match" "for" "force"
+    "foreach" "forever" "fork" "forkjoin" "function" "generate" "genvar" "if" "iff"
+    "illegal_bins" "implements" "implies" "import" "initial" "inside" "interconnect"
+    "interface" "intersect" "join" "join_any" "join_none" "local" "localparam"
+    "matches" "modport" "new" "nexttime" "null" "option" "or" "package" "packed"
+    "parameter" "program" "property" "pure" "randcase" "randomize" "reject_on"
+    "release" "repeat" "return" "s_always" "s_eventually" "s_nexttime" "s_until"
+    "s_until_with" "sequence" "showcancelled" "soft" "solve" "struct" "super"
+    "sync_accept_on" "sync_reject_on" "tagged" "task" "throughout" "timeprecision"
+    "timeunit" "type" "typedef" "union" "unique" "until" "until_with" "virtual"
+    "wait" "while" "with"
+    (always_keyword)               ; always, always_comb, always_latch, always_ff
+    (bins_keyword)                 ; bins, illegal_bins, ignore_bins
+    (case_keyword)                 ; case, casez, casex
+    (class_item_qualifier)         ; static, protected, local
+    (dpi_function_import_property) ; dpi import
+    (edge_identifier)              ; posedge, negedge, edge
+    (lifetime)                     ; static, automatic
+    (module_keyword)               ; module, macromodule
+    (random_qualifier)             ; rand, randc
+    (unique_priority)))            ; unique, unique0, priority
 
 (defconst verilog-ts-operators-arithmetic
   '("+" "-" "*" "/" "%" "**"))
@@ -810,7 +813,8 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
    :language 'verilog
    '([(string_literal)
       (quoted_string) ; `include strings
-      (system_lib_string)]
+      (system_lib_string)
+      (dpi_spec_string)]
      @font-lock-string-face)
 
    :feature 'keyword
@@ -832,7 +836,9 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
      (["(" ")"] @verilog-ts-font-lock-parenthesis-face)
      (["[" "]"] @verilog-ts-font-lock-brackets-face)
      (["{" "}" "'{"] @verilog-ts-font-lock-curly-braces-face)
-     (["@" "#" "##"] @verilog-ts-font-lock-time-event-face))
+     (["@" "#" "##"] @verilog-ts-font-lock-time-event-face)
+     (["[*" "[=" "[->"] @verilog-ts-font-lock-brackets-face)) ; SVA repetition
+
 
    :feature 'operator
    :language 'verilog
