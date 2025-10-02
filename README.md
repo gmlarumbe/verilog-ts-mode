@@ -74,7 +74,7 @@ grammar that `verilog-ts-mode` relies on.
 At this point, the following command should return `t`:
 
 ``` elisp
-(treesit-language-available-p 'verilog)
+(treesit-language-available-p 'systemverilog)
 ```
 
 
