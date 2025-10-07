@@ -133,6 +133,8 @@ Alignment is performed after execution of `verilog-ts-pretty-declarations' and
        "task_body_declaration"
        "function_prototype"
        "task_prototype"
+       "sequence_declaration"
+       "property_declaration"
        "checker_declaration"
        "config_declaration")
      'symbols)))
@@ -227,7 +229,7 @@ If none is found, return nil."
            (string-match "\\_<\\(module\\|interface\\|program\\)_declaration\\_>" (treesit-node-type node))
            (or (treesit-node-text (treesit-node-child-by-field-name (treesit-search-subtree node "\\_<\\(module\\|interface\\|program\\)_\\(non\\)?ansi_header") "name") :no-props)
                (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props))) ; extern module instantiation
-          ;; package/class/function/task/checker/config
+          ;; package/class/function/task/checker/config/property/sequence
           ((string-match verilog-ts-declaration-node-re (treesit-node-type node))
            (treesit-node-text (treesit-node-child-by-field-name node "name") :no-props))
           ;; class constructor
@@ -1032,6 +1034,7 @@ For NODE,OVERRIDE, START, END, and ARGS, see `treesit-font-lock-rules'."
       (constant_expression) @verilog-ts-font-lock-brackets-content-face)
      (value_range ; inside {[min_range:max_range]}, place here to apply override
       (expression) @font-lock-constant-face)
+     (cycle_delay_const_range_expression) @verilog-ts-font-lock-brackets-content-face
      (dynamic_array_new
       (expression) @font-lock-constant-face))
 
