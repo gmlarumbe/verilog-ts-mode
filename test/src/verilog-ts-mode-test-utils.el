@@ -106,6 +106,7 @@
 
 (defun verilog-ts-mode-test-utils-identifier-fn ()
   (let (node ret-value)
+    (verilog-ts-mode)
     (goto-char (point-min))
     (while (setq node (treesit-search-forward-goto (verilog-ts--node-at-point) verilog-ts-mode-test-utils-identifier-ts-re))
       (push `(,(verilog-ts--node-identifier-name node)
@@ -136,7 +137,7 @@
                                    :out-file-ext "inst.point.el"
                                    :process-fn 'eval
                                    :fn #'test-hdl-pos-list-fn
-                                   :args `(:mode verilog-mode
+                                   :args `(:mode verilog-ts-mode
                                            :fn verilog-ts-mode-test-utils-instance-at-point-fn
                                            :pos-list ,pos-list))))
   ;; Module at point
@@ -148,7 +149,7 @@
                                    :out-file-ext "mod.point.el"
                                    :process-fn 'eval
                                    :fn #'test-hdl-pos-list-fn
-                                   :args `(:mode verilog-mode
+                                   :args `(:mode verilog-ts-mode
                                            :fn verilog-ts-mode-test-utils-module-at-point-fn
                                            :pos-list ,pos-list))))
   ;; Identifier name and type
