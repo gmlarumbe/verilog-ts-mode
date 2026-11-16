@@ -5,9 +5,9 @@ endclass // foo
 class temp;
     extern function test();
     extern function test2();
-    function foo();
-        foo = 1;
-    endfunction // foo
+        function foo();
+    foo = 1;
+endfunction // foo
     extern function test3();
         reg [31:0] b;
 endclass // temp

@@ -1290,11 +1290,13 @@ Handle indentation of block end keywords."
   (save-excursion
     (pcase (treesit-node-text node :no-props)
       ("endtask"
-       (goto-char (treesit-node-start (or (verilog-ts--node-has-parent-recursive node "class_method") ; First check if it's a class method to align to modifiers ...
-                                          (verilog-ts--node-has-parent-recursive node "task_declaration"))))) ; ... e.g: protected/static/etc...
+       (when-let* ((parent (or (verilog-ts--node-has-parent-recursive node "class_method")        ; First check if it's a class method to align to modifiers ...
+                               (verilog-ts--node-has-parent-recursive node "task_declaration")))) ; ... e.g: protected/static/etc...
+         (goto-char (treesit-node-start parent))))
       ("endfunction"
-       (goto-char (treesit-node-start (or (verilog-ts--node-has-parent-recursive node "class_method")
-                                          (verilog-ts--node-has-parent-recursive node "\\(function\\|class_constructor\\)_declaration")))))
+       (when-let* ((parent (or (verilog-ts--node-has-parent-recursive node "class_method")
+                               (verilog-ts--node-has-parent-recursive node "\\(function\\|class_constructor\\)_declaration"))))
+         (goto-char (treesit-node-start parent))))
       ;; default is parent-bol 0
       (_
        (goto-char (treesit-node-start parent))

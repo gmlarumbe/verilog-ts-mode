@@ -1,6 +1,5 @@
 (("my_field" "int")
  ("foo" "class_declaration")
- ("foo" "function_body_declaration")
  ("temp" "class_declaration")
  ("a" "logic")
  ("short" "class_declaration")
