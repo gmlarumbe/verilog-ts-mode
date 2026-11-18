@@ -17,7 +17,7 @@ indentation, `imenu`, `which-func`, navigation and basic beautify and completion
 
 - Emacs 29.1+ with tree-sitter support
 - Verilog tree-sitter grammar
-  - WARNING: This package relies on the new [tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog) grammar which is much more robust than the original [tree-sitter-verilog](https://github.com/tree-sitter/tree-sitter-verilog)
+  - WARNING: This package relies on the [tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog) grammar which is much more robust than the older [tree-sitter-verilog](https://github.com/tree-sitter/tree-sitter-verilog)
 
 Before installing/building Emacs make sure that tree-sitter is available:
 
@@ -75,8 +75,7 @@ The package provides an interactive command to simplify the installation of the 
 This command requires Git, a C compiler and (sometimes) a C++ compiler,
 and the linker to be installed and on the PATH.
 
-Once run successfully it will install the new
-[tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog)
+Once run successfully it will install the [tree-sitter-systemverilog](https://github.com/gmlarumbe/tree-sitter-systemverilog)
 grammar that `verilog-ts-mode` relies on.
 
 At this point, the following command should return `t`:
